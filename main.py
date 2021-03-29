@@ -15,12 +15,13 @@ disc_df = util.discretize(continous_df, discretization.get_initial_disctretizati
 df[disc_df.columns] = disc_df
 #discretization.discretize_all(df, structure.get_graph(df), continous_df)
 # %%
-labor = pd.read_csv('working_data.csv', index_col=0)
-labor['sex'] = labor['sex'].replace({'f': 0, 'm': 1})
-labor.columns = range(len(labor.columns))
+#labor = pd.read_csv('working_data.csv', index_col=0)
+#labor['sex'] = labor['sex'].replace({'f': 0, 'm': 1})
+#labor.columns = range(len(labor.columns))
 
-df = labor.sample(200).reset_index(drop=True)
-continous_df = df[[0, 2, 3, 4]].copy()
+#df = labor.sample(200).reset_index(drop=True)
+#continous_df = df[[0, 2, 3, 4]].copy()
+# %%
 L__X = discretization.get_initial_disctretization(df, continous_df, k=3)
 # %%
 from importlib import reload
