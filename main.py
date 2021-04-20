@@ -1,3 +1,10 @@
+#%%
+import sklearn.datasets
+import MultivariateDiscretizer
+iris = sklearn.datasets.load_iris()
+d = MultivariateDiscretizer.MultivariateDiscretizer(MultivariateDiscretizer.concat_array(iris['data'], iris['target']))
+d.show()
+
 # %%
 import numpy as np
 import matplotlib.pyplot as plt

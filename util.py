@@ -28,8 +28,9 @@ def bn_to_graph(model: pomegranate.BayesianNetwork) -> nx.DiGraph:
             G.add_edge(node, edge)
     return G
 
-def show(model: pomegranate.BayesianNetwork) -> None:
-    G = bn_to_graph(model)
+def show(G: Union[pomegranate.BayesianNetwork, nx.DiGraph]) -> None:
+    if type(G) is pomegranate.BayesianNetwork:
+        G = bn_to_graph(G)
     nx.draw(G, with_labels=True)
 
 if __name__ == "__main__":
