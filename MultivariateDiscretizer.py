@@ -19,7 +19,8 @@ class MultivariateDiscretizer:
     columns: list[int] = None
     column_labels: list[str] = None
     column_types: list[ColumnType] = None
-    column_unique_values: np.ndarray = None
+    column_unique_values: dict[int, np.ndarray] = None
+    discretization: list[list[float]] = None
     graph: nx.digraph = None
 
     def __init__(self, data: np.ndarray) -> None:
@@ -27,7 +28,7 @@ class MultivariateDiscretizer:
         self.data, self.column_unique_values = self._string_array_to_int(data)
         self.columns = self.column_labels = range(data.shape[1])
         self._set_column_types()
-        #set_initial_discretization
+        self._set_initial_discretizations()
         self.learn_structure()
 
     #region Preprocessing
@@ -52,6 +53,24 @@ class MultivariateDiscretizer:
     
     #endregion
     
+    #region Discretization
+
+    def _set_initial_discretizations(self, number_of_classes: int = None) -> None:
+        self.discretization = [[]] * len(self.columns)
+        if number_of_classes is None:
+            number_of_classes = 1
+            for i, t in enumerate(self.column_types):
+                if t == ColumnType.DISCRETE and number_of_classes < len(np.unique(self.data[:, i])):
+                    number_of_classes = len(np.unique(self.data[:, i]))
+        for i, t in enumerate(self.column_types):
+            if t == ColumnType.CONTINUOUS:
+                d = self.data[:, i]                
+                cutpoints = [x for x in range(0, len(d)-number_of_classes, len(d)//number_of_classes)][1:]
+                values = sorted(d)
+                self.discretization[i] = [values[it] for it in cutpoints]
+
+    #endregion
+
     #region Graph
 
     def learn_structure(self):
@@ -72,13 +91,14 @@ def concat_array(data: np.ndarray, target: np.ndarray) -> np.ndarray:
 
 
 if __name__ == '__main__':
-    if True:
+    if False:
         data = np.array([['a', 1, 1.1], ['b', 1, 2.1], ['b', 2, 1.3], ['a', 2, 2.4]])
         d = MultivariateDiscretizer(data)
         d.show()
 
-    if False:
+    if True:
         import sklearn.datasets
         iris = sklearn.datasets.load_iris()
         d = MultivariateDiscretizer(concat_array(iris['data'], iris['target']))
+        print(d.discretization)
         print(d.column_types)
