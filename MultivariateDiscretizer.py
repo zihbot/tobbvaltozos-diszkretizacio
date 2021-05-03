@@ -1,3 +1,4 @@
+from discretization import discretize_one
 from typing import Tuple
 import pandas as pd
 import numpy as np
@@ -69,6 +70,10 @@ class MultivariateDiscretizer:
                 values = sorted(d)
                 self.discretization[i] = [values[it] for it in cutpoints]
 
+    def _discretize_one(self, i: int) -> None:
+        df = self.as_dataframe()
+        discretize_one(self.as_dataframe(self.get_discretized_data()), self.graph, df[df.columns[i]])
+
     #endregion
 
     #region Graph
@@ -79,6 +84,18 @@ class MultivariateDiscretizer:
 
     def show(self):
         util.show(self.graph)
+
+    #endregion
+
+    #region Format
+
+    def as_dataframe(self, data: np.ndarray = None):
+        if data is None:
+            data = self.data
+        return pd.DataFrame(data)
+
+    def get_discretized_data(self):
+        return util.discretize(self.as_dataframe, self.discretization)
 
     #endregion
 
