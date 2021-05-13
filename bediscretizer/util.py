@@ -33,6 +33,13 @@ def show(G: Union[pomegranate.BayesianNetwork, nx.DiGraph]) -> None:
         G = bn_to_graph(G)
     nx.draw(G, with_labels=True)
 
+def concat_array(data: np.ndarray, target: np.ndarray) -> np.ndarray:
+    if len(data.shape) > len(target.shape):
+        target = np.expand_dims(target, 0)
+    if data.shape[0] != target.shape[0]:
+        target = target.transpose()
+    return np.hstack((data, target))
+
 if __name__ == "__main__":
     data = np.array([[1, 2, 3, 4], [1.1, 2.1, 3.1, 4.1]])
     policy = np.array([[1.05], [1.9, 3.0], [3.01, 3.07], [4.02]])

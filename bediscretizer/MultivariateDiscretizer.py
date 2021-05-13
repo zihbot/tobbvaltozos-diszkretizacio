@@ -1,4 +1,4 @@
-from discretization import discretize_one
+from .discretization import discretize_one
 from typing import Tuple
 import pandas as pd
 import numpy as np
@@ -6,7 +6,7 @@ import enum
 import pomegranate
 import networkx as nx
 
-import util
+from . import util
 
 class ColumnType(enum.Enum):
     DISCRETE = 0

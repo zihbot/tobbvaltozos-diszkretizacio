@@ -5,7 +5,7 @@ import pandas as pd
 from pandas.core.frame import DataFrame
 import pomegranate
 import matplotlib.pyplot as plt
-import util
+from . import util
 import networkx as nx
 import scipy as sc
 import math
