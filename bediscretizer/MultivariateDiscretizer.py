@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 from .discretization import discretize_one
 from typing import Tuple
 import pandas as pd
@@ -23,9 +24,11 @@ class MultivariateDiscretizer:
     column_unique_values: dict[int, np.ndarray] = None
     discretization: list[list[float]] = None
     graph: nx.digraph = None
+    name: str = None
 
-    def __init__(self, data: np.ndarray) -> None:
+    def __init__(self, data: np.ndarray, name: str = "Unknown") -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
+        self.name = name
         self.data, self.column_unique_values = self._string_array_to_int(data)
         self.columns = self.column_labels = range(data.shape[1])
         self._set_column_types()
@@ -84,6 +87,12 @@ class MultivariateDiscretizer:
 
     def show(self):
         util.show(self.graph)
+    
+    def draw_to_file(self, filename=None):
+        if filename is None:
+            filename = self.name + "-structure.png"        
+        util.show(self.graph)
+        plt.savefig(filename)
 
     #endregion
 
@@ -115,6 +124,7 @@ if __name__ == '__main__':
 
     if True:
         import sklearn.datasets
+        from . import MultivariateDiscretizer
         iris = sklearn.datasets.load_iris()
         d = MultivariateDiscretizer(concat_array(iris['data'], iris['target']))
         print(d.discretization)
