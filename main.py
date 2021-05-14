@@ -1,9 +1,15 @@
 import bediscretizer
 import sklearn.datasets
-import time
+import logging
+import os
+
+os.remove("run.log")
+logging.basicConfig(filename="run.log", level=logging.DEBUG)
 
 iris = sklearn.datasets.load_iris()
-d = bediscretizer.MultivariateDiscretizer(bediscretizer.util.concat_array(iris['data'], iris['target']), 'Iris')
+data = bediscretizer.util.concat_array(iris['data'], iris['target'])
+d = bediscretizer.MultivariateDiscretizer(data, 'Iris')
+d.fit()
 print(d.discretization)
 print(d.column_types)
-d.draw_to_file()
+d.draw_structure_to_file()

@@ -9,7 +9,9 @@ from . import util
 import networkx as nx
 import scipy as sc
 import math
+import logging
 
+logger = logging.getLogger("Discretization")
 
 def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series) -> list:
     #structure = pomegranate.BayesianNetwork.from_samples(disc_df, algorithm='chow-liu').structure
@@ -84,7 +86,7 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series) -> list:
                     __S = W[v] + H[s[u]+1, s[v]] + L * (uX[v] - uX[u+1]) / (uX[m-1] - uX[0]) + S[u]
                 if _S is None or _S > __S:
                     if u == len(uX)-1:
-                        print("No discretization edge found")
+                        logger.warning("No discretization edge found")
                         _S, _u, DiscEdge = __S, u, uX[u]
                     else:
                         _S, _u, DiscEdge = __S, u, (uX[u] + uX[u+1]) / 2

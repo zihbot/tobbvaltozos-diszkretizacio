@@ -6,8 +6,11 @@ import numpy as np
 import enum
 import pomegranate
 import networkx as nx
+import logging
 
 from . import util
+
+logger = logging.getLogger("MultivariateDiscretizer")
 
 class ColumnType(enum.Enum):
     DISCRETE = 0
@@ -72,23 +75,40 @@ class MultivariateDiscretizer:
                 cutpoints = [x for x in range(0, len(d)-number_of_classes, len(d)//number_of_classes)][1:]
                 values = sorted(d)
                 self.discretization[i] = [values[it] for it in cutpoints]
+        logger.debug("_set_initial_discretizations() Initial discretization: {}".format(self.discretization))
 
     def _discretize_one(self, i: int) -> None:
+        logger.debug("_discretize_one() {}. column, discretization before: {}".format(i, self.discretization[i]))
         df = self.as_dataframe()
-        discretize_one(self.as_dataframe(self.get_discretized_data()), self.graph, df[df.columns[i]])
+        disc = discretize_one(self.as_dataframe(self.get_discretized_data()), self.graph, df[df.columns[i]])
+        logger.debug("_discretize_one() discretization after: {}".format(disc))
+        self.discretization[i] = disc
+
+    def _discretize_all(self) -> None:
+        for c in self.columns:
+            if self.column_types[c] == ColumnType.CONTINUOUS:
+                self._discretize_one(c)
+
+    def fit(self, epochs: int = 3) -> None:
+        logger.info("fit() started")
+        for i in range(epochs):
+            logger.info("fit() {}. epoch".format(i))
+            self._discretize_all()
+            self.learn_structure()
+        logger.info("fit() ended")
 
     #endregion
 
     #region Graph
 
     def learn_structure(self):
-        model = pomegranate.BayesianNetwork.from_samples(self.data, algorithm='exact')
+        model = pomegranate.BayesianNetwork.from_samples(self.data, algorithm='chow-liu')
         self.graph = util.bn_to_graph(model)
 
     def show(self):
         util.show(self.graph)
     
-    def draw_to_file(self, filename=None):
+    def draw_structure_to_file(self, filename=None):
         if filename is None:
             filename = self.name + "-structure.png"        
         util.show(self.graph)
@@ -104,7 +124,7 @@ class MultivariateDiscretizer:
         return pd.DataFrame(data)
 
     def get_discretized_data(self):
-        return util.discretize(self.as_dataframe, self.discretization)
+        return util.discretize(self.as_dataframe(), self.discretization)
 
     #endregion
 
