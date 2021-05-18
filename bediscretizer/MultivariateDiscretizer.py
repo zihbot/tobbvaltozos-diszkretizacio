@@ -28,10 +28,13 @@ class MultivariateDiscretizer:
     discretization: list[list[float]] = None
     graph: nx.digraph = None
     name: str = None
+    bn_algorithm: str = None
 
-    def __init__(self, data: np.ndarray, name: str = "Unknown") -> None:
+    def __init__(self, data: np.ndarray, 
+            name: str = "Unknown", bn_algorithm = 'chow-liu') -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
         self.name = name
+        self.bn_algorithm = bn_algorithm
         self.data, self.column_unique_values = self._string_array_to_int(data)
         self.columns = self.column_labels = range(data.shape[1])
         self._set_column_types()
@@ -85,16 +88,19 @@ class MultivariateDiscretizer:
         self.discretization[i] = disc
 
     def _discretize_all(self) -> None:
-        for c in self.columns:
+        for c in self._node_fit_order():
             if self.column_types[c] == ColumnType.CONTINUOUS:
                 self._discretize_one(c)
 
-    def fit(self, epochs: int = 3) -> None:
-        logger.info("fit() started")
-        for i in range(epochs):
+    def fit(self, max_epochs: int = 5) -> None:
+        logger.info("fit() started, max epochs: {}".format(max_epochs))
+        for i in range(max_epochs):
+            before_graph = self.graph
             logger.info("fit() {}. epoch".format(i))
             self._discretize_all()
             self.learn_structure()
+            if set(self.graph.edges) == set(before_graph.edges):
+                break
         logger.info("fit() ended")
 
     #endregion
@@ -102,23 +108,26 @@ class MultivariateDiscretizer:
     #region Graph
 
     def learn_structure(self):
-        model = pomegranate.BayesianNetwork.from_samples(self.data, algorithm='chow-liu')
+        model = pomegranate.BayesianNetwork.from_samples(self.data, algorithm=self.bn_algorithm)
         self.graph = util.bn_to_graph(model)
 
     def show(self):
         util.show(self.graph)
     
-    def draw_structure_to_file(self, filename=None):
+    def draw_structure_to_file(self, filename=None) -> None:
         if filename is None:
             filename = self.name + "-structure.png"        
         util.show(self.graph)
         plt.savefig(filename)
 
+    def _node_fit_order(self) -> list[int]:
+        return list(reversed(list(nx.topological_sort(self.graph))))
+
     #endregion
 
     #region Format
 
-    def as_dataframe(self, data: np.ndarray = None):
+    def as_dataframe(self, data: np.ndarray = None) -> pd.DataFrame:
         if data is None:
             data = self.data
         return pd.DataFrame(data)
