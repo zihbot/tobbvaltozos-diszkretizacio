@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from pandas.core.algorithms import mode
 from .discretization import discretize_one
 from typing import Tuple
 import pandas as pd
@@ -7,6 +8,8 @@ import enum
 import pomegranate
 import networkx as nx
 import logging
+import copy
+from sklearn import metrics
 
 from . import util
 
@@ -26,7 +29,7 @@ class MultivariateDiscretizer:
     column_types: list[ColumnType] = None
     column_unique_values: dict[int, np.ndarray] = None
     discretization: list[list[float]] = None
-    graph: nx.digraph = None
+    graph: nx.digraph.DiGraph = None
     name: str = None
     bn_algorithm: str = None
 
@@ -95,20 +98,42 @@ class MultivariateDiscretizer:
     def fit(self, max_epochs: int = 5) -> None:
         logger.info("fit() started, max epochs: {}".format(max_epochs))
         for i in range(max_epochs):
-            before_graph = self.graph
+            before_graph_edges = copy.deepcopy(set(self.graph.edges))
             logger.info("fit() {}. epoch".format(i))
             self._discretize_all()
             self.learn_structure()
-            if set(self.graph.edges) == set(before_graph.edges):
+            if set(self.graph.edges) == before_graph_edges:
                 break
         logger.info("fit() ended")
 
     #endregion
 
+    #region Evaluate
+    def evaluate(self) -> list[float]:
+        model = self.model()
+        result =  {}
+        for c in self.columns:
+            if self.column_types[c] == ColumnType.DISCRETE:
+                logger.info("evaluate() {}. column".format(c))
+                df = self.get_discretized_data()
+                df.loc[:, c] = None
+                y_true = self.data[:, c].astype(int)
+                y_pred = np.array(model.predict(df.to_numpy()))[:, c].astype(int)
+                precision = metrics.precision_score(y_true, y_pred, average='weighted')
+                recall = metrics.recall_score(y_true, y_pred, average='weighted')
+                result[str(c)] = {'precision': precision, 'recall': recall}
+        return result
+
+
+    #endregion
+
     #region Graph
 
+    def model(self) -> pomegranate.BayesianNetwork:
+        return pomegranate.BayesianNetwork.from_samples(self.get_discretized_data(), algorithm=self.bn_algorithm)
+
     def learn_structure(self):
-        model = pomegranate.BayesianNetwork.from_samples(self.data, algorithm=self.bn_algorithm)
+        model = self.model()
         self.graph = util.bn_to_graph(model)
 
     def show(self):
@@ -116,7 +141,7 @@ class MultivariateDiscretizer:
     
     def draw_structure_to_file(self, filename=None) -> None:
         if filename is None:
-            filename = self.name + "-structure.png"        
+            filename = "{}.{}.structure.png".format(self.name, self.bn_algorithm)        
         util.show(self.graph)
         plt.savefig(filename)
 
