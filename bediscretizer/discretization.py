@@ -13,6 +13,9 @@ import logging
 
 logger = logging.getLogger("Discretization")
 
+class DiscretizationError(Exception):
+    pass
+
 def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series) -> list:
     #structure = pomegranate.BayesianNetwork.from_samples(disc_df, algorithm='chow-liu').structure
     ci = X.name # continous variable iterator
@@ -88,6 +91,7 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series) -> list:
                     if u == len(uX)-1:
                         logger.warning("No discretization edge found")
                         _S, _u, DiscEdge = __S, u, uX[u]
+                        raise DiscretizationError("No discretization edge found")
                     else:
                         _S, _u, DiscEdge = __S, u, (uX[u] + uX[u+1]) / 2
             S[v] = _S

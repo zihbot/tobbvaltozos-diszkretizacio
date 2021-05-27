@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 from pandas.core.algorithms import mode
-from .discretization import discretize_one
+from .discretization import DiscretizationError, discretize_one
 from typing import Tuple
 import pandas as pd
 import numpy as np
@@ -86,23 +86,26 @@ class MultivariateDiscretizer:
     def _discretize_one(self, i: int) -> None:
         logger.debug("_discretize_one() {}. column, discretization before: {}".format(i, self.discretization[i]))
         df = self.as_dataframe()
-        disc = discretize_one(self.as_dataframe(self.get_discretized_data()), self.graph, df[df.columns[i]])
-        logger.debug("_discretize_one() discretization after: {}".format(disc))
-        self.discretization[i] = disc
+        try:
+            disc = discretize_one(self.as_dataframe(self.get_discretized_data()), self.graph, df[df.columns[i]])
+            logger.debug("_discretize_one() discretization after: {}".format(disc))
+            self.discretization[i] = disc
+        except DiscretizationError as e:
+            logger.debug("_discretize_one() discretization after error: {}".format(self.discretization[i]))
 
     def _discretize_all(self) -> None:
         for c in self._node_fit_order():
             if self.column_types[c] == ColumnType.CONTINUOUS:
                 self._discretize_one(c)
 
-    def fit(self, max_epochs: int = 5) -> None:
+    def fit(self, max_epochs: int = 10) -> None:
         logger.info("fit() started, max epochs: {}".format(max_epochs))
         for i in range(max_epochs):
-            before_graph_edges = copy.deepcopy(set(self.graph.edges))
+            before_disc = copy.deepcopy(self.discretization)
             logger.info("fit() {}. epoch".format(i))
             self._discretize_all()
             self.learn_structure()
-            if set(self.graph.edges) == before_graph_edges:
+            if self.discretization == before_disc:
                 break
         logger.info("fit() ended")
 
@@ -144,6 +147,7 @@ class MultivariateDiscretizer:
             filename = "{}.{}.structure.png".format(self.name, self.bn_algorithm)        
         util.show(self.graph)
         plt.savefig(filename)
+        plt.close()
 
     def _node_fit_order(self) -> list[int]:
         return list(reversed(list(nx.topological_sort(self.graph))))
