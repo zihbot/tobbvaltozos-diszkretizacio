@@ -32,8 +32,9 @@ class MultivariateDiscretizer:
     graph: nx.digraph.DiGraph = None
     name: str = None
     bn_algorithm: str = None
+    number_of_classes = None
 
-    def __init__(self, data: np.ndarray, 
+    def __init__(self, data: np.ndarray,
             name: str = "Unknown", bn_algorithm = 'chow-liu') -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
         self.name = name
@@ -50,7 +51,7 @@ class MultivariateDiscretizer:
         self.column_types = [ColumnType.CONTINUOUS] * len(self.columns)
         for i in self.columns:
             self.column_types[i] = get_column_type(self.data[:, i])
-    
+
     def _string_array_to_int(self, data: np.ndarray) -> Tuple[np.ndarray, dict]:
         decoders = {}
         if np.issubdtype(data.dtype, str):
@@ -63,40 +64,51 @@ class MultivariateDiscretizer:
                     encoder = dict((j,i) for i,j in enumerate(unique))
                     data[:, col_id] = np.array([encoder[i] for i in data[:, col_id]])
         return data.astype(float), decoders
-    
+
     #endregion
-    
+
     #region Discretization
 
-    def _set_initial_discretizations(self, number_of_classes: int = None) -> None:
+    def _set_initial_discretizations(self) -> None:
         self.discretization = [[]] * len(self.columns)
-        if number_of_classes is None:
-            number_of_classes = 1
+        if self.number_of_classes is None:
+            self.number_of_classes = 1
             for i, t in enumerate(self.column_types):
-                if t == ColumnType.DISCRETE and number_of_classes < len(np.unique(self.data[:, i])):
-                    number_of_classes = len(np.unique(self.data[:, i]))
+                if t == ColumnType.DISCRETE and self.number_of_classes < len(np.unique(self.data[:, i])):
+                    self.number_of_classes = len(np.unique(self.data[:, i]))
         for i, t in enumerate(self.column_types):
             if t == ColumnType.CONTINUOUS:
-                d = self.data[:, i]                
-                cutpoints = [x for x in range(0, len(d)-number_of_classes, len(d)//number_of_classes)][1:]
+                d = self.data[:, i]
+                cutpoints = [x for x in range(0, len(d)-self.number_of_classes, len(d)//self.number_of_classes)][1:]
                 values = sorted(d)
                 self.discretization[i] = [values[it] for it in cutpoints]
         logger.debug("_set_initial_discretizations() Initial discretization: {}".format(self.discretization))
 
     def _discretize_one(self, i: int) -> None:
-        logger.debug("_discretize_one() {}. column, discretization before: {}".format(i, self.discretization[i]))
         df = self.as_dataframe()
+        D = self.as_dataframe(self.get_discretized_data())
         try:
-            disc = discretize_one(self.as_dataframe(self.get_discretized_data()), self.graph, df[df.columns[i]])
+            L = util.largest_markov_cardinality(D, self.graph, df.columns[i])
+        except:
+            L = self.number_of_classes
+        logger.debug("_discretize_one() {}. column, L={}, discretization before: {}".format(i, L, self.discretization[i]))
+        try:
+            disc = discretize_one(D, self.graph, df[df.columns[i]], L)
             logger.debug("_discretize_one() discretization after: {}".format(disc))
             self.discretization[i] = disc
         except DiscretizationError as e:
             logger.debug("_discretize_one() discretization after error: {}".format(self.discretization[i]))
 
-    def _discretize_all(self) -> None:
-        for c in self._node_fit_order():
-            if self.column_types[c] == ColumnType.CONTINUOUS:
-                self._discretize_one(c)
+    def _discretize_all(self, max_cycles: int = 10) -> None:
+        for i in range(max_cycles):
+            logger.debug("_discretize_all() {}. cycle, discretization before: {}".format(i, self.discretization))
+            before_disc = copy.deepcopy(self.discretization)
+            for c in self._node_fit_order():
+                if self.column_types[c] == ColumnType.CONTINUOUS:
+                    self._discretize_one(c)
+            logger.debug("_discretize_all() {}. cycle, discretization after: {}".format(i, self.discretization))
+            if self.discretization == before_disc:
+                break
 
     def fit(self, max_epochs: int = 10) -> None:
         logger.info("fit() started, max epochs: {}".format(max_epochs))
@@ -141,10 +153,10 @@ class MultivariateDiscretizer:
 
     def show(self):
         util.show(self.graph)
-    
+
     def draw_structure_to_file(self, filename=None) -> None:
         if filename is None:
-            filename = "{}.{}.structure.png".format(self.name, self.bn_algorithm)        
+            filename = "{}.{}.structure.png".format(self.name, self.bn_algorithm)
         util.show(self.graph)
         plt.savefig(filename)
         plt.close()
