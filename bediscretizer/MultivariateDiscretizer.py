@@ -34,8 +34,8 @@ class MultivariateDiscretizer:
     bn_algorithm: str = None
     number_of_classes = None
 
-    def __init__(self, data: np.ndarray,
-            name: str = "Unknown", bn_algorithm = 'chow-liu') -> None:
+    def __init__(self, data: np.ndarray, name: str = "Unknown",
+            bn_algorithm = 'chow-liu', graph: nx.digraph.DiGraph = None) -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
         self.name = name
         self.bn_algorithm = bn_algorithm
@@ -43,7 +43,10 @@ class MultivariateDiscretizer:
         self.columns = self.column_labels = range(data.shape[1])
         self._set_column_types()
         self._set_initial_discretizations()
-        self.learn_structure()
+        if graph is None:
+            self.learn_structure()
+        else:
+            self.graph = graph
 
     #region Preprocessing
 

@@ -88,9 +88,9 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list
                     __S = W[v] + H[s[u]+1, s[v]] + L * (uX[v] - uX[u+1]) / (uX[m-1] - uX[0]) + S[u]
                 if _S is None or _S > __S:
                     if u == len(uX)-1:
-                        logger.warning("No discretization edge found")
+                        logger.warning("No discretization edge found" + str(L_))
                         _S, _u, DiscEdge = __S, u, uX[u]
-                        raise DiscretizationError("No discretization edge found")
+                        raise DiscretizationError("No discretization edge found " + str(L_))
                     else:
                         _S, _u, DiscEdge = __S, u, (uX[u] + uX[u+1]) / 2
             S[v] = _S
