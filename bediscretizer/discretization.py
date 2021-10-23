@@ -74,8 +74,6 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list
     D.reset_index(drop=True, inplace=True)
 
     H = precalculate_probability_table_as_definition(D, G, ci)
-    print('H', H[0:10,0:10])
-    exit()
 
     n = D.shape[0]
     uX, s = np.unique(D[ci], return_index=True)
