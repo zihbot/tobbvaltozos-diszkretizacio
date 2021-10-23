@@ -35,7 +35,7 @@ class MultivariateDiscretizer:
     number_of_classes = None
 
     def __init__(self, data: np.ndarray, name: str = "Unknown",
-            bn_algorithm = 'chow-liu', graph: nx.digraph.DiGraph = None) -> None:
+            bn_algorithm = 'exact', graph: nx.digraph.DiGraph = None) -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
         self.name = name
         self.bn_algorithm = bn_algorithm
@@ -82,9 +82,14 @@ class MultivariateDiscretizer:
         for i, t in enumerate(self.column_types):
             if t == ColumnType.CONTINUOUS:
                 d = self.data[:, i]
-                cutpoints = [x for x in range(0, len(d)-self.number_of_classes, len(d)//self.number_of_classes)][1:]
-                values = sorted(d)
-                self.discretization[i] = [values[it] for it in cutpoints]
+                #cutpoints = [x for x in range(0, len(d)-self.number_of_classes, len(d)//self.number_of_classes)][1:]
+                #values = sorted(d)
+                #self.discretization[i] = [values[it] for it in cutpoints]
+
+                # Equal width
+                min_val, max_val = min(d), max(d)
+                span = (max_val - min_val) / self.number_of_classes
+                self.discretization[i] = [min_val + span * i for i in range(1, self.number_of_classes)]
         logger.debug("_set_initial_discretizations() Initial discretization: {}".format(self.discretization))
 
     def _discretize_one(self, i: int) -> None:

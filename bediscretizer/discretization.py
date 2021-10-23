@@ -1,5 +1,5 @@
 # %%
-from typing import Tuple
+from typing import Hashable, Tuple
 import numpy as np
 import pandas as pd
 from pandas.core.frame import DataFrame
@@ -16,23 +16,11 @@ logger = logging.getLogger("Discretization")
 class DiscretizationError(Exception):
     pass
 
-def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list:
-    #structure = pomegranate.BayesianNetwork.from_samples(disc_df, algorithm='chow-liu').structure
-    ci = X.name # continous variable iterator
-
-    D = D.copy()
-    D[ci] = X
-    D.sort_values(ci, inplace=True)
-    n = D.shape[0]
-    #D = D.iloc[n//20:n*19//20,:].copy() # Drop lower and upper 5 percentile
-    D.reset_index(drop=True, inplace=True)
+def precalculate_probability_table_as_definition(D: pd.DataFrame, G: nx.DiGraph, ci: Hashable) -> np.ndarray:
     n = D.shape[0]
     H = np.zeros((n, n))
-    uX, s = np.unique(D[ci], return_index=True)
-    m = len(uX)
-    s[0] = n
-    s = np.roll(s - 1, -1)
     P = [p for p in G.predecessors(ci)]
+
     J_P = 1
     for p in P:
         J_P *= len(np.unique(D[p]))
@@ -71,6 +59,29 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list
                 h -= sum(np.log(sc.special.factorial(n_j_i_m_l)))
 
             H[u, v] = h
+
+    return H
+
+def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list:
+    #structure = pomegranate.BayesianNetwork.from_samples(disc_df, algorithm='chow-liu').structure
+    ci = X.name # continous variable iterator
+
+    D = D.copy()
+    D[ci] = X
+    D.sort_values(ci, inplace=True)
+    #n = D.shape[0]
+    #D = D.iloc[n//20:n*19//20,:].copy() # Drop lower and upper 5 percentile
+    D.reset_index(drop=True, inplace=True)
+
+    H = precalculate_probability_table_as_definition(D, G, ci)
+    print('H', H[0:10,0:10])
+    exit()
+
+    n = D.shape[0]
+    uX, s = np.unique(D[ci], return_index=True)
+    m = len(uX)
+    s[0] = n
+    s = np.roll(s - 1, -1)
 
     S = np.zeros(m)
     L_ = [set()] * m
