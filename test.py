@@ -9,7 +9,11 @@ import networkx as nx
 import bediscretizer
 from bediscretizer.MultivariateDiscretizer import ColumnType
 
-logging.basicConfig(filename="{}.log".format(datetime.now().strftime("%Y%m%d %H%M%S")), level=logging.DEBUG)
+logging.basicConfig(
+    filename="{}.log".format(datetime.now().strftime("%Y%m%d %H%M%S")),
+    level=logging.DEBUG,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 class DiscretizationTest(unittest.TestCase):
 

@@ -51,3 +51,5 @@ nx.draw(structure.get_graph(df), with_labels=True)
 print("---------------------------")
 #L__X = L__X_last
 # %%
+import numpy as np
+import scipy as sc

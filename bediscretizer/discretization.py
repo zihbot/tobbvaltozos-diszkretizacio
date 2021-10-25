@@ -2,7 +2,9 @@
 from typing import Hashable, Tuple
 import numpy as np
 import pandas as pd
+from pandas.core.algorithms import unique
 from pandas.core.frame import DataFrame
+from pandas.core.series import Series
 import pomegranate
 import matplotlib.pyplot as plt
 from . import util
@@ -62,6 +64,90 @@ def precalculate_probability_table_as_definition(D: pd.DataFrame, G: nx.DiGraph,
 
     return H
 
+def precalculate_probability_table_dynamic_programming(D: pd.DataFrame, G: nx.DiGraph, ci: Hashable) -> np.ndarray:
+    n = D.shape[0]
+    H = np.zeros((n, n))
+    P = [p for p in G.predecessors(ci)]
+    C = [c for c in G.successors(ci)]
+    S = [None] * len(C)
+
+    J_P = 1
+    S_c = [None] * len(C)
+    J_C = [1] * len(C)
+    J_S = [1] * len(C)
+    for p in P:
+        J_P *= len(np.unique(D[p]))
+    for i, c in enumerate(C):
+        S[i] = [s for s in G.predecessors(c)]
+        S[i].remove(ci)
+        S_c[i] = [s for s in S[i]]
+        S_c[i].append(c)
+        J_C[i] = len(np.unique(D[c]))
+        for spouse in S[i]:
+            J_S[i] *= len(np.unique(D[spouse]))
+
+    for v in range(n):
+        for u in range(v + 1):
+            H[u, v] = math.log(sc.special.comb(v - u + J_P, J_P - 1))
+
+    # Parent table
+    for p in P:
+        p_dist = pd.get_dummies(D[p])
+        dist_table = np.zeros((n, n, len(p_dist.iloc[0,:])), dtype=int)
+        for v in range(n):
+            for u in range(v + 1):
+                # fill dist_table
+                if v == u:
+                    dist_table[u, v] = p_dist.iloc[v,:]
+                else:
+                    dist_table[u, v] = dist_table[u, v-1] + p_dist.iloc[v,:]
+
+                # calculate probability
+                h = math.log(math.factorial(v+1-u))
+                h -= sum(np.log(sc.special.factorial(dist_table[u, v])))
+                H[u, v] += h
+
+    # Child-Spouse table
+    for i, c in enumerate(C):
+        c_dist = pd.get_dummies(D[c])
+        n_c = len(c_dist.iloc[0,:])
+
+        s_class: pd.Series
+        if len(S[i]) > 0:
+            s_class = D[S[i]].groupby(S[i]).ngroup()
+        else:
+            s_class = pd.Series(np.zeros(n))
+        n_s_class = len(unique(s_class))
+
+        dist_table = np.zeros((n, n, n_s_class, n_c), dtype=int)
+        for v in range(n):
+            for u in range(v + 1):
+                h = 0
+
+                for i_s_class in range(n_s_class):
+                    z = np.zeros(n_c)
+                    if i_s_class == s_class[v]:
+                        z = c_dist.iloc[v,:]
+
+                    # fill dist_table
+                    if v == u:
+                        dist_table[u, v, i_s_class] = z
+                    else:
+                        dist_table[u, v, i_s_class] = dist_table[u, v-1, i_s_class] + z
+
+                    # calculate probability
+                    c_over_s_dist = dist_table[u, v, i_s_class]
+                    n_c_over_s = sum(c_over_s_dist)
+                    h += math.log(sc.special.comb(n_c_over_s + J_C[i] - 1, J_C[i] - 1))
+                    h += math.log(math.factorial(n_c_over_s))
+                    h -= sum(np.log(sc.special.factorial(c_over_s_dist)))
+                H[u, v] += h
+
+    print('TAB', H[:10,:10])
+    exit()
+
+    return H
+
 def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list:
     #structure = pomegranate.BayesianNetwork.from_samples(disc_df, algorithm='chow-liu').structure
     ci = X.name # continous variable iterator
@@ -73,7 +159,7 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list
     #D = D.iloc[n//20:n*19//20,:].copy() # Drop lower and upper 5 percentile
     D.reset_index(drop=True, inplace=True)
 
-    H = precalculate_probability_table_as_definition(D, G, ci)
+    H = precalculate_probability_table_dynamic_programming(D, G, ci)
 
     n = D.shape[0]
     uX, s = np.unique(D[ci], return_index=True)
