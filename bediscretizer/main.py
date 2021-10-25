@@ -53,3 +53,31 @@ print("---------------------------")
 # %%
 import numpy as np
 import scipy as sc
+from scipy import special
+import math
+import timeit
+def basic(n = 10):
+    x = np.arange(n)
+    y = np.zeros((n, n))
+    for j in x:
+        for i in x:
+            y[i, j] = math.log(math.factorial(i*j))
+
+def gamma(n = 10):
+    x = np.arange(n)
+    y = np.zeros((n, n))
+    for j in x:
+        for i in x:
+            y[i, j] = sc.special.gammaln(i*j+1)
+
+def vector(n = 10):
+    x = np.arange(n)
+    x2 = [i*j+1 for i in x for j in x]
+    y = sc.special.gammaln(x2)
+
+
+print('basic: ', timeit.timeit('basic(20)',  globals=globals(), number=1000))
+print('gamma: ', timeit.timeit('gamma(20)',  globals=globals(), number=1000))
+print('vector: ', timeit.timeit('vector(20)',  globals=globals(), number=1000))
+
+# %%
