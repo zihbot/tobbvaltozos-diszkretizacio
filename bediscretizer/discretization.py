@@ -104,7 +104,8 @@ def precalculate_probability_table_dynamic_programming(D: pd.DataFrame, G: nx.Di
 
                 # calculate probability
                 h = math.log(math.factorial(v+1-u))
-                h -= sum(np.log(sc.special.factorial(dist_table[u, v])))
+                #h -= sum(np.log(sc.special.factorial(dist_table[u, v])))
+                h -= sum(sc.special.gammaln(dist_table[u, v] + 1))
                 H[u, v] += h
 
     # Child-Spouse table
@@ -138,14 +139,16 @@ def precalculate_probability_table_dynamic_programming(D: pd.DataFrame, G: nx.Di
                     # calculate probability
                     c_over_s_dist = dist_table[u, v, i_s_class]
                     n_c_over_s = sum(c_over_s_dist)
-                    h += math.log(sc.special.comb(n_c_over_s + J_C[i] - 1, J_C[i] - 1))
-                    h += math.log(math.factorial(n_c_over_s))
-                    h -= sum(np.log(sc.special.factorial(c_over_s_dist)))
+                    #h += math.log(sc.special.comb(n_c_over_s + J_C[i] - 1, J_C[i] - 1))
+                    #h += math.log(math.factorial(n_c_over_s))
+                    #h -= sum(np.log(sc.special.factorial(c_over_s_dist)))
+
+                    # Vectors for faster gammaln calculation
+                    add = np.asarray([n_c_over_s + J_C[i], n_c_over_s + 1])
+                    sub = np.append([J_C[i], n_c_over_s + 1], c_over_s_dist + 1)
+                    h += sum(sc.special.gammaln(add))
+                    h -= sum(sc.special.gammaln(sub))
                 H[u, v] += h
-
-    print('TAB', H[:10,:10])
-    exit()
-
     return H
 
 def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list:
