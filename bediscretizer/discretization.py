@@ -92,15 +92,15 @@ def precalculate_probability_table_dynamic_programming(D: pd.DataFrame, G: nx.Di
 
     # Parent table
     for p in P:
-        p_dist = pd.get_dummies(D[p])
-        dist_table = np.zeros((n, n, len(p_dist.iloc[0,:])), dtype=int)
+        p_dist = pd.get_dummies(D[p]).to_numpy()
+        dist_table = np.zeros((n, n, len(p_dist[0,:])), dtype=int)
         for v in range(n):
             for u in range(v + 1):
                 # fill dist_table
                 if v == u:
-                    dist_table[u, v] = p_dist.iloc[v,:]
+                    dist_table[u, v] = p_dist[v,:]
                 else:
-                    dist_table[u, v] = dist_table[u, v-1] + p_dist.iloc[v,:]
+                    dist_table[u, v] = dist_table[u, v-1] + p_dist[v,:]
 
                 # calculate probability
                 h = math.log(math.factorial(v+1-u))
@@ -110,8 +110,8 @@ def precalculate_probability_table_dynamic_programming(D: pd.DataFrame, G: nx.Di
 
     # Child-Spouse table
     for i, c in enumerate(C):
-        c_dist = pd.get_dummies(D[c])
-        n_c = len(c_dist.iloc[0,:])
+        c_dist = pd.get_dummies(D[c]).to_numpy()
+        n_c = len(c_dist[0,:])
 
         s_class: pd.Series
         if len(S[i]) > 0:
@@ -128,7 +128,7 @@ def precalculate_probability_table_dynamic_programming(D: pd.DataFrame, G: nx.Di
                 for i_s_class in range(n_s_class):
                     z = np.zeros(n_c)
                     if i_s_class == s_class[v]:
-                        z = c_dist.iloc[v,:]
+                        z = c_dist[v,:]
 
                     # fill dist_table
                     if v == u:
@@ -173,6 +173,7 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list
     S = np.zeros(m)
     L_ = [set()] * m
     W = np.append(-np.log([1 - math.exp(-L * (uX[i+1] - uX[i]) / (uX[m-1] - uX[0])) for i in range(m-1)]), 0)
+
     for v in range(m):
         if v == 0:
             S[v] = H[0, s[v]] + W[v]
