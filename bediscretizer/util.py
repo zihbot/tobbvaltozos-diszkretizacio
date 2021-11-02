@@ -19,7 +19,7 @@ def discretize(data: pd.DataFrame, policy: Iterable[Iterable]) -> pd.DataFrame:
         for cnt, threshold in enumerate(policy[i]):
             data.loc[data.iloc[:,i] >= threshold, 'tmp'] = cnt + 1
         data.iloc[:,i] = data['tmp']
-    data = data.drop(columns='tmp')
+        data = data.drop(columns='tmp')
 
     return data
 
