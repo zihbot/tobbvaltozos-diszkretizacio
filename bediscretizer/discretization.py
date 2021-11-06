@@ -287,7 +287,7 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
     for p in P:
         p_dist = pd.get_dummies(D[p]).to_numpy()
 
-
+        '''
         dist_table = np.zeros((n, n, len(p_dist[0,:])), dtype=int)
         for v in range(n):
             for u in range(v + 1):
@@ -296,7 +296,6 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
                     dist_table[u, v] = p_dist[v,:]
                 else:
                     dist_table[u, v] = dist_table[u, v-1] + p_dist[v,:]
-
                 # calculate probability
                 h = math.log(math.factorial(v+1-u))
                 h -= sum(sc.special.gammaln(dist_table[u, v] + 1))
@@ -304,14 +303,13 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
         '''
         J_p = p_dist.shape[1]
         dist_table = np.reshape(np.tile(p_dist, (n, 1)), (n, n, J_p))
-        tril_index = np.tril_indices(n, k=-1, m=J_p)
+        tril_index = np.tril_indices(n, k=-1)
         dist_table[tril_index] = np.zeros(J_p)
         dist_table = np.cumsum(dist_table, axis=1)
 
         H += sc.special.gammaln(vSu + 2)
         H -= np.sum(sc.special.gammaln(dist_table + 1), axis=-1)
 
-        '''
 
     # Child-Spouse table
 
@@ -338,6 +336,7 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
                 dist_table[v, i_s_class] = z
 
         logger.info('TODO child intval_table')
+        '''
         intval_table = np.zeros((n, n, n_s_class, n_c), dtype=int)
         for v in range(n):
             for u in range(v + 1):
@@ -350,11 +349,9 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
         '''
         J_p = p_dist.shape[1]
         intval_table = np.reshape(np.tile(dist_table, (n, 1, 1)), (n, n, n_s_class, n_c))
-        tril_index = np.tril_indices(n, k=-1, m=n_s_class*n_c)
+        tril_index = np.tril_indices(n, k=-1)
         intval_table[tril_index] = np.zeros((n_s_class, n_c))
         intval_table = np.cumsum(intval_table, axis=1)
-
-        '''
 
         logger.info('TODO child H')
 
@@ -375,10 +372,8 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
                     h += sum(sc.special.gammaln(add))
                     h -= sum(sc.special.gammaln(sub))
                 H[u, v] += h
-
-
-        #print('TABLE', intval_table)
         '''
+        #print('TABLE', intval_table)
 
         H += sc.special.gammaln(vSu + 2)
         H -= np.sum(sc.special.gammaln(dist_table + 1), axis=-1)
@@ -476,9 +471,10 @@ if __name__ == "__main__":
     df = pd.read_csv('test/data_auto_mpg.csv', header=None).iloc[:6, :]#.reset_index(drop=True, inplace=True)
     df[4] = df[4].apply(lambda x: 3500 if x<3500 else 5000)
     df[0] = df[0].apply(lambda x: 18 if x>16.5 else 15)
+    df[2] = df[2].apply(lambda x: 305 if x<310 else 315)
 
     graph = nx.DiGraph([(1,2), (2,4), (4,0), (0,6), (4,6), (2,6), (2,3), (3,5)])
     #print(precalculate_probability_table_as_definition(df, graph, 0))
-    print(precalculate_probability_table_dynamic_programming(df, graph, 0))
+    print(precalculate_probability_table_dynamic_programming(df, graph, 4))
     #print(precalculate_probability_table_split_up(df, graph, 0))
-    print(precalculate_probability_table_split_up_numpy(df, graph, 0))
+    print(precalculate_probability_table_split_up_numpy(df, graph, 4))
