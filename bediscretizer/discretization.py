@@ -355,6 +355,7 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
 
         logger.info('TODO child H')
 
+        '''
         for v in range(n):
             for u in range(v + 1):
                 h = 0
@@ -371,10 +372,21 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
                     sub = np.append([J_C[i], n_c_over_s + 1], c_over_s_dist + 1)
                     h += sum(sc.special.gammaln(add))
                     h -= sum(sc.special.gammaln(sub))
-                H[u, v] += h
+                #H[u, v] += h
         '''
-        #print('TABLE', intval_table)
 
+        n_c_over_s_table = np.sum(intval_table, axis=-1)
+        # n^j_il + J_C_j - 1 choose J_C_j - 1
+        H += np.sum(sc.special.gammaln(n_c_over_s_table + J_C[i]), axis=-1)
+        H -= math.log(math.factorial(J_C[i] - 1))
+        # H += np.sum(sc.special.gammaln(n_c_over_s_table + 1), axis=-1) reduction with next term
+
+        # n^j_il!
+        # H += np.sum(sc.special.gammaln(n_c_over_s_table + 1), axis=-1) reduction with previous term
+
+        # -sum(ln(n^j_ijl!))
+        H -= np.sum(sc.special.gammaln(intval_table + 1), axis=(-1, -2))
+        '''
         H += sc.special.gammaln(vSu + 2)
         H -= np.sum(sc.special.gammaln(dist_table + 1), axis=-1)
         '''
@@ -429,6 +441,7 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list
     return sorted(L_[m-1])
 
 #%%
+'''
 def discretize_all(D: pd.DataFrame, G: nx.DiGraph, X: pd.DataFrame, L__X: list = None, max_iter: int = 3) -> Tuple[list, pd.DataFrame]:
     D = D.copy()
     continous_classes = X.columns
@@ -446,6 +459,7 @@ def discretize_all(D: pd.DataFrame, G: nx.DiGraph, X: pd.DataFrame, L__X: list =
             _D_X = util.discretize(X, np.array(L__X))
             D[c] = _D_X[c]
     return L__X, D
+'''
 #%%
 def get_initial_disctretization(D: pd.DataFrame, X: pd.DataFrame, k: int = None) -> list:
     continous_classes = X.columns
