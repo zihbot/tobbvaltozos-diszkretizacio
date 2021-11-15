@@ -249,7 +249,6 @@ def precalculate_probability_table_split_up(D: pd.DataFrame, G: nx.DiGraph, ci: 
     return H
 
 def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph, ci: Hashable) -> np.ndarray:
-    logger.info('TODO init')
     n = D.shape[0]
     H = np.zeros((n, n))
     P = [p for p in G.predecessors(ci)]
@@ -271,36 +270,18 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
         for spouse in S[i]:
             J_S[i] *= len(np.unique(D[spouse]))
 
-    logger.info('TODO parent card')
-
     vSu = np.zeros((n, n))
     for v in range(n):
         for u in range(v + 1):
-            #H[u, v] = math.log(sc.special.comb(v - u + J_P, J_P - 1))
             vSu[u, v] = v - u
 
     H = sc.special.gammaln(vSu + J_P + 1)
     H -= sc.special.gammaln(vSu + 2) + math.log(math.factorial(J_P - 1))
 
     # Parent table
-    logger.info('TODO parent')
     for p in P:
         p_dist = pd.get_dummies(D[p]).to_numpy()
 
-        '''
-        dist_table = np.zeros((n, n, len(p_dist[0,:])), dtype=int)
-        for v in range(n):
-            for u in range(v + 1):
-                # fill dist_table
-                if v == u:
-                    dist_table[u, v] = p_dist[v,:]
-                else:
-                    dist_table[u, v] = dist_table[u, v-1] + p_dist[v,:]
-                # calculate probability
-                h = math.log(math.factorial(v+1-u))
-                h -= sum(sc.special.gammaln(dist_table[u, v] + 1))
-                H[u, v] += h
-        '''
         J_p = p_dist.shape[1]
         dist_table = np.reshape(np.tile(p_dist, (n, 1)), (n, n, J_p))
         tril_index = np.tril_indices(n, k=-1)
@@ -312,9 +293,7 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
 
     # Child-Spouse table
 
-    logger.info('TODO child')
     for i, c in enumerate(C):
-        logger.info('TODO child init')
         c_dist = pd.get_dummies(D[c]).to_numpy()
         n_c = len(c_dist[0,:])
 
@@ -325,7 +304,6 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
             s_class = pd.Series(np.zeros(n))
         n_s_class = len(unique(s_class))
 
-        logger.info('TODO child distr_table')
         dist_table = np.zeros((n, n_s_class, n_c), dtype=int)
         for v in range(n):
             for i_s_class in range(n_s_class):
@@ -334,59 +312,18 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
                     z = c_dist[v,:]
                 dist_table[v, i_s_class] = z
 
-        logger.info('TODO child intval_table')
-        '''
-        intval_table = np.zeros((n, n, n_s_class, n_c), dtype=int)
-        for v in range(n):
-            for u in range(v + 1):
-                for i_s_class in range(n_s_class):
-                    # fill intval_table
-                    if v == u:
-                        intval_table[u, v, i_s_class] = dist_table[v, i_s_class]
-                    else:
-                        intval_table[u, v, i_s_class] = intval_table[u, v-1, i_s_class] + dist_table[v, i_s_class]
-        '''
         J_p = p_dist.shape[1]
         intval_table = np.reshape(np.tile(dist_table, (n, 1, 1)), (n, n, n_s_class, n_c))
         tril_index = np.tril_indices(n, k=-1)
         intval_table[tril_index] = np.zeros((n_s_class, n_c))
+
         intval_table = np.cumsum(intval_table, axis=1)
-
-        logger.info('TODO child H')
-
-        '''
-        for v in range(n):
-            for u in range(v + 1):
-                h = 0
-                for i_s_class in range(n_s_class):
-                    # calculate probability
-                    c_over_s_dist = intval_table[u, v, i_s_class]
-                    n_c_over_s = sum(c_over_s_dist)
-                    #h += math.log(sc.special.comb(n_c_over_s + J_C[i] - 1, J_C[i] - 1))
-                    #h += math.log(math.factorial(n_c_over_s))
-                    #h -= sum(np.log(sc.special.factorial(c_over_s_dist)))
-
-                    # Vectors for faster gammaln calculation
-                    add = np.asarray([n_c_over_s + J_C[i], n_c_over_s + 1])
-                    sub = np.append([J_C[i], n_c_over_s + 1], c_over_s_dist + 1)
-                    h += sum(sc.special.gammaln(add))
-                    h -= sum(sc.special.gammaln(sub))
-                H[u, v] += h
-        '''
-
         n_c_over_s_table = np.sum(intval_table, axis=-1)
-        # n^j_il + J_C_j - 1 choose J_C_j - 1
+
         H += np.sum(sc.special.gammaln(n_c_over_s_table + J_C[i]), axis=-1)
         H -= math.log(math.factorial(J_C[i] - 1)) * n_s_class
-        # H -= np.sum(sc.special.gammaln(n_c_over_s_table + 1), axis=-1) reduction with next term
-
-        # n^j_il!
-        # H += np.sum(sc.special.gammaln(n_c_over_s_table + 1), axis=-1) reduction with previous term
-
-        # -sum(ln(n^j_ijl!))
         H -= np.sum(sc.special.gammaln(intval_table + 1), axis=(-1, -2))
 
-    logger.info('TODO end')
     H = np.triu(H)
     return H
 
