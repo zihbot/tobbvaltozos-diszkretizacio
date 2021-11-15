@@ -227,10 +227,10 @@ def precalculate_probability_table_split_up(D: pd.DataFrame, G: nx.DiGraph, ci: 
                     else:
                         intval_table[u, v, i_s_class] = intval_table[u, v-1, i_s_class] + dist_table[v, i_s_class]
 
-        for v in range(n):
-            for u in range(v + 1):
-                h = 0
-                for i_s_class in range(n_s_class):
+        for i_s_class in range(n_s_class):
+            for v in range(n):
+                for u in range(v + 1):
+                    h = 0
                     # calculate probability
                     c_over_s_dist = intval_table[u, v, i_s_class]
                     n_c_over_s = sum(c_over_s_dist)
@@ -240,13 +240,13 @@ def precalculate_probability_table_split_up(D: pd.DataFrame, G: nx.DiGraph, ci: 
 
                     # Vectors for faster gammaln calculation
                     add = np.asarray([n_c_over_s + J_C[i], n_c_over_s + 1])
+                    #add = np.asarray([n_c_over_s + J_C[i]])
                     sub = np.append([J_C[i], n_c_over_s + 1], c_over_s_dist + 1)
+                    #sub = np.append([J_C[i]], c_over_s_dist + 1)
                     h += sum(sc.special.gammaln(add))
                     h -= sum(sc.special.gammaln(sub))
-                H[u, v] += h
-
+                    H[u, v] += h
     return H
-
 
 def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph, ci: Hashable) -> np.ndarray:
     logger.info('TODO init')
@@ -310,7 +310,6 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
         H += sc.special.gammaln(vSu + 2)
         H -= np.sum(sc.special.gammaln(dist_table + 1), axis=-1)
 
-
     # Child-Spouse table
 
     logger.info('TODO child')
@@ -372,24 +371,20 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
                     sub = np.append([J_C[i], n_c_over_s + 1], c_over_s_dist + 1)
                     h += sum(sc.special.gammaln(add))
                     h -= sum(sc.special.gammaln(sub))
-                #H[u, v] += h
+                H[u, v] += h
         '''
 
         n_c_over_s_table = np.sum(intval_table, axis=-1)
         # n^j_il + J_C_j - 1 choose J_C_j - 1
         H += np.sum(sc.special.gammaln(n_c_over_s_table + J_C[i]), axis=-1)
-        H -= math.log(math.factorial(J_C[i] - 1))
-        # H += np.sum(sc.special.gammaln(n_c_over_s_table + 1), axis=-1) reduction with next term
+        H -= math.log(math.factorial(J_C[i] - 1)) * n_s_class
+        # H -= np.sum(sc.special.gammaln(n_c_over_s_table + 1), axis=-1) reduction with next term
 
         # n^j_il!
         # H += np.sum(sc.special.gammaln(n_c_over_s_table + 1), axis=-1) reduction with previous term
 
         # -sum(ln(n^j_ijl!))
         H -= np.sum(sc.special.gammaln(intval_table + 1), axis=(-1, -2))
-        '''
-        H += sc.special.gammaln(vSu + 2)
-        H -= np.sum(sc.special.gammaln(dist_table + 1), axis=-1)
-        '''
 
     logger.info('TODO end')
     H = np.triu(H)
@@ -482,13 +477,18 @@ if __name__ == "__main__":
     #model = pomegranate.BayesianNetwork.from_samples(disc_df, algorithm='chow-liu')
     #L_ = discretize_one(disc_df, util.bn_to_graph(model), df[0])
 
-    df = pd.read_csv('test/data_auto_mpg.csv', header=None).iloc[:6, :]#.reset_index(drop=True, inplace=True)
-    df[4] = df[4].apply(lambda x: 3500 if x<3500 else 5000)
-    df[0] = df[0].apply(lambda x: 18 if x>16.5 else 15)
-    df[2] = df[2].apply(lambda x: 305 if x<310 else 315)
+    df = pd.read_csv('test/discretized_data_auto_mpg.csv', header=None).iloc[55:95, :].reset_index(drop=True)
+    #df[4] = df[4].apply(lambda x: 3500 if x<3500 else 5000)
+    #df[0] = df[0].apply(lambda x: 18 if x>16.5 else 15)
+    #df[2] = df[2].apply(lambda x: 305 if x<310 else 315)
 
     graph = nx.DiGraph([(1,2), (2,4), (4,0), (0,6), (4,6), (2,6), (2,3), (3,5)])
+
+    h1 = precalculate_probability_table_split_up(df, graph, 4)
+    h2 = precalculate_probability_table_split_up_numpy(df, graph, 4)
+
     #print(precalculate_probability_table_as_definition(df, graph, 0))
-    print(precalculate_probability_table_dynamic_programming(df, graph, 4))
+    print('H1\n', h1[:])
     #print(precalculate_probability_table_split_up(df, graph, 0))
-    print(precalculate_probability_table_split_up_numpy(df, graph, 4))
+    print('H2\n', h2[:])
+    print(np.sum(np.abs(h1-h2)))
