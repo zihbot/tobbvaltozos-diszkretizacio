@@ -106,6 +106,7 @@ class MultivariateDiscretizer:
             self.discretization[i] = disc
         except DiscretizationError as e:
             logger.debug("_discretize_one() discretization after error: {}".format(self.discretization[i]))
+            self.discretization[i] = []
 
     def _discretize_all(self, max_cycles: int = 10) -> None:
         for i in range(max_cycles):
@@ -123,6 +124,8 @@ class MultivariateDiscretizer:
         for i in range(max_epochs):
             before_disc = copy.deepcopy(self.discretization)
             logger.info("fit() {}. epoch".format(i))
+            for cvar in self._node_fit_order():
+                logger.debug('Structure around {}: parents={}, children={}'.format(cvar, list(self.graph.predecessors(cvar)), list(self.graph.successors(cvar))))
             self._discretize_all()
             self.learn_structure()
             if self.discretization == before_disc:

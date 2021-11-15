@@ -312,7 +312,6 @@ def precalculate_probability_table_split_up_numpy(D: pd.DataFrame, G: nx.DiGraph
                     z = c_dist[v,:]
                 dist_table[v, i_s_class] = z
 
-        J_p = p_dist.shape[1]
         intval_table = np.reshape(np.tile(dist_table, (n, 1, 1)), (n, n, n_s_class, n_c))
         tril_index = np.tril_indices(n, k=-1)
         intval_table[tril_index] = np.zeros((n_s_class, n_c))
@@ -363,9 +362,9 @@ def discretize_one(D: pd.DataFrame, G: nx.DiGraph, X: pd.Series, L: int) -> list
                     __S = W[v] + H[s[u]+1, s[v]] + L * (uX[v] - uX[u+1]) / (uX[m-1] - uX[0]) + S[u]
                 if _S is None or _S > __S:
                     if u == len(uX)-1:
-                        logger.warning("No discretization edge found" + str(L_))
+                        # logger.warning("No discretization edge found" + str(L_)) # Not a problem, but raise exception
                         _S, _u, DiscEdge = __S, u, uX[u]
-                        raise DiscretizationError("No discretization edge found " + str(L_))
+                        raise DiscretizationError("No discretization edge found")
                     else:
                         _S, _u, DiscEdge = __S, u, (uX[u] + uX[u+1]) / 2
             S[v] = _S
