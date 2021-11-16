@@ -1,5 +1,7 @@
 from matplotlib import pyplot as plt
 from pandas.core.algorithms import mode
+
+from bediscretizer import structure
 from .discretization import DiscretizationError, discretize_one
 from typing import Tuple
 import pandas as pd
@@ -156,7 +158,8 @@ class MultivariateDiscretizer:
     #region Graph
 
     def model(self) -> pomegranate.BayesianNetwork:
-        return pomegranate.BayesianNetwork.from_samples(self.get_discretized_data(), algorithm=self.bn_algorithm)
+        #return pomegranate.BayesianNetwork.from_samples(self.get_discretized_data(), algorithm=self.bn_algorithm, penalty=5)
+        return structure.learn_structure(self.get_discretized_data())
 
     def learn_structure(self):
         model = self.model()

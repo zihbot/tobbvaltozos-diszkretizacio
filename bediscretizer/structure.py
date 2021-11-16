@@ -1,17 +1,66 @@
 #%%
+from os import name
+import numpy as np
 import pomegranate
 import matplotlib.pyplot as plt
-import util
 import networkx.algorithms.isomorphism as iso
 import pandas as pd
 import networkx as nx
+import random
+try:
+    from . import util
+except:
+    import util
 
-def learn_structure(disctretized_df: pd.DataFrame) -> pomegranate.BayesianNetwork:
-    return pomegranate.BayesianNetwork.from_samples(disctretized_df, algorithm='chow-liu')
+def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'k2') -> pomegranate.BayesianNetwork:
+    if algorithm == 'k2':
+        g = learn_k2_structure(disctretized_df)
+        return pomegranate.BayesianNetwork.from_structure(disctretized_df, util.graph_to_bn_structure(g))
+    else:
+        return pomegranate.BayesianNetwork.from_samples(disctretized_df, algorithm=algorithm)
 
 def get_graph(disctretized_df: pd.DataFrame = None) -> nx.DiGraph:
     model = learn_structure(disctretized_df)
     return util.bn_to_graph(model)
+
+def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: int = 2) -> nx.DiGraph:
+    if order is None:
+        order = list(df.columns)
+        random.shuffle(order)
+    n = len(order)
+    if n != len(list(df.columns)):
+        raise ValueError('Number of columns {} and length of order {} not match'.format(len(order), len(list(df.columns))))
+
+    p = [[] for i in range(n)]
+    for i in range(n):
+        P_old = util.preference_bias(df, order[i], p[i])
+        ok_to_proceed = True
+        while ok_to_proceed and len(p[i]) < upper_bound+1:
+            P_new = 0
+
+            # find z that maximizes preference_bias
+            z = None
+            for zi in range(i):
+                if order[zi] in p[i]: continue
+                pb = util.preference_bias(df, order[i], [*p[i], order[zi]])
+                if pb > P_new:
+                    z = order[zi]
+                    P_new = pb
+
+            if P_new > P_old:
+                P_old = P_new
+                p[i].append(z)
+            else:
+                ok_to_proceed = False
+
+    g = nx.DiGraph()
+    g.add_nodes_from(order)
+    for i, p_list in enumerate(p):
+        for pi in p_list:
+            g.add_edge(pi, order[i])
+    return g
+
+"""
 # %%
 G1 = nx.DiGraph()
 G2 = nx.DiGraph()
@@ -37,3 +86,22 @@ print(set(G2.edges))
 print(set(G3.edges))
 print(set(G1.edges)==set(G2.edges))
 # %%
+"""
+if __name__ == '__main__':
+    df = pd.DataFrame(np.array([
+        [1,0,0],
+        [1,1,1],
+        [0,0,1],
+        [1,1,1],
+        [0,0,0],
+        [0,1,1],
+        [1,1,1],
+        [0,0,0],
+        [1,1,1],
+        [0,0,0],
+    ]))
+    g = learn_k2_structure(df, [0, 1, 2])
+    print(list(nx.topological_sort(g)))
+    print(g.edges)
+    print(g.nodes)
+    print(util.graph_to_bn_structure(g))

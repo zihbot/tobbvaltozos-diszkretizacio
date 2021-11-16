@@ -1,6 +1,8 @@
 # %%
 from datetime import date, datetime
 from time import time
+
+import pandas as pd
 import bediscretizer
 import sklearn.datasets
 import logging
@@ -9,12 +11,10 @@ import os
 algos = ['chow-liu', 'greedy', 'exact']
 #for algo in algos:
 #    try:
-algo = 'exact'
+algo = 'greedy'
 print(algo)
-if os.path.isfile("{}.log".format(algo)):
-    os.remove("{}.log".format(algo))
 logging.basicConfig(
-    filename="{}.log".format(datetime.now().strftime("%Y%m%d %H%M%S")),
+    filename="logs/{}.log".format(datetime.now().strftime("%Y%m%d %H%M%S")),
     level=logging.DEBUG,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
@@ -28,4 +28,6 @@ print(d.discretization)
 print(d.column_types)
 d.draw_structure_to_file()
 print(d.evaluate())
+# %%
+
 # %%

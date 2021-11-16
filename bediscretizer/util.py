@@ -1,10 +1,14 @@
 from typing import Hashable, Iterable, Union
 from matplotlib.pyplot import draw
 import numpy as np
+from numpy.lib import math
 import pandas as pd
 from pandas.core.algorithms import unique
 from pomegranate import BayesianNetwork
 import networkx as nx
+import scipy as sc
+from scipy.special import gammaln
+import math
 
 def discretize(data: pd.DataFrame, policy: Iterable[Iterable]) -> pd.DataFrame:
     assert type(data) is pd.DataFrame
@@ -35,6 +39,12 @@ def bn_to_graph(model: BayesianNetwork) -> nx.DiGraph:
             G.add_edge(node, edge)
     return G
 
+def graph_to_bn_structure(g: nx.DiGraph) -> tuple[tuple[int]]:
+    result = []
+    for i in sorted(g.nodes):
+        result.append(tuple(g.predecessors(i)))
+    return tuple(result)
+
 def show(G: BayesianNetwork) -> None:
     if type(G) is BayesianNetwork:
         G = bn_to_graph(G)
@@ -58,6 +68,31 @@ def markov_blanket(G: nx.DiGraph, x: Hashable) -> list[Hashable]:
     for c in children:
         spouses = spouses.union(G.predecessors(c))
     return sorted(parents.union(children).union(spouses).difference([x]))
+
+def preference_bias(df: pd.DataFrame, i: int, p: list) -> float:
+    D = df[[i, *p]].copy()
+    if len(p) == 0:
+        p = [i+1]
+        D[p] = 0
+    q = len(p)
+    r = len(D[i].unique())
+
+    # count of instantiation in j. parent and k. i
+    Da = D.copy()
+    Da['x'] = 1
+    Da = Da.groupby(list(D.columns)).count().reset_index()
+    Da = Da[['x', *p]].groupby(p)['x'].apply(list)
+    La = Da.values.tolist()
+    a = np.zeros([len(La),len(max(La, key=len))])
+    for i,j in enumerate(La):
+        a[i][0:len(j)] = j
+    #a = np.array(Da.values.tolist(), dtype=object)
+    N = np.sum(a, -1)
+
+    result = q * math.log(math.factorial(r - 1))
+    result -= np.sum(gammaln(N + r))
+    result += np.sum(gammaln(a + 1))
+    return math.exp(result)
 
 if __name__ == "__main__":
     data = np.array([[1, 2, 3, 4], [1.1, 2.1, 3.1, 4.1]])
