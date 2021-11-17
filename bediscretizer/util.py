@@ -36,14 +36,29 @@ def bn_to_graph(model: BayesianNetwork) -> nx.DiGraph:
     G.add_nodes_from(range(len(structure)))
     for node, edges in enumerate(structure):
         for edge in edges:
-            G.add_edge(node, edge)
+            G.add_edge(edge, node)
     return G
 
-def graph_to_bn_structure(g: nx.DiGraph) -> tuple[tuple[int]]:
+def graph_to_bn_structure(g: nx.DiGraph, columns: list[int] = None, map_position: bool = False) -> tuple[tuple[int]]:
+    if columns is None:
+        columns = sorted(g.nodes)
     result = []
-    for i in sorted(g.nodes):
-        result.append(tuple(g.predecessors(i)))
+    for i in columns:
+        if i not in g.nodes:
+            result.append(tuple([]))
+            continue
+        p = g.predecessors(i) if not map_position else [columns.index(x) for x in g.predecessors(i)]
+        result.append(tuple(p))
     return tuple(result)
+
+def parents_to_graph(p: list[list[int]], order: list[int]) -> nx.DiGraph:
+    g = nx.DiGraph()
+    g.add_nodes_from(order)
+    for i, p_list in enumerate(p):
+        if i >= len(order): break
+        for pi in p_list:
+            g.add_edge(pi, order[i])
+    return g
 
 def show(G: BayesianNetwork) -> None:
     if type(G) is BayesianNetwork:

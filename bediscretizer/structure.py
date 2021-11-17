@@ -12,10 +12,11 @@ try:
 except:
     import util
 
-def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'k2') -> pomegranate.BayesianNetwork:
+def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'k2', **kwargs) -> pomegranate.BayesianNetwork:
     if algorithm == 'k2':
-        g = learn_k2_structure(disctretized_df)
-        return pomegranate.BayesianNetwork.from_structure(disctretized_df, util.graph_to_bn_structure(g))
+        g = learn_k2_structure(disctretized_df, **kwargs)
+        parents = util.graph_to_bn_structure(g, list(disctretized_df.columns), True)
+        return pomegranate.BayesianNetwork.from_structure(disctretized_df, parents)
     else:
         return pomegranate.BayesianNetwork.from_samples(disctretized_df, algorithm=algorithm)
 
@@ -23,7 +24,7 @@ def get_graph(disctretized_df: pd.DataFrame = None) -> nx.DiGraph:
     model = learn_structure(disctretized_df)
     return util.bn_to_graph(model)
 
-def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: int = 2) -> nx.DiGraph:
+def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: int = 2, p_step: list[list[int]] = None) -> nx.DiGraph:
     if order is None:
         order = list(df.columns)
         random.shuffle(order)
@@ -31,7 +32,7 @@ def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: i
     if n != len(list(df.columns)):
         raise ValueError('Number of columns {} and length of order {} not match'.format(len(order), len(list(df.columns))))
 
-    p = [[] for i in range(n)]
+    p = [[] for i in range(n)] if p_step is None or len(p_step) == 0 else p_step
     for i in range(n):
         P_old = util.preference_bias(df, order[i], p[i])
         ok_to_proceed = True
@@ -50,15 +51,11 @@ def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: i
             if P_new > P_old:
                 P_old = P_new
                 p[i].append(z)
+                if p_step is not None:
+                    return util.parents_to_graph(p, order[:i+1])
             else:
                 ok_to_proceed = False
-
-    g = nx.DiGraph()
-    g.add_nodes_from(order)
-    for i, p_list in enumerate(p):
-        for pi in p_list:
-            g.add_edge(pi, order[i])
-    return g
+    return util.parents_to_graph(p, order)
 
 """
 # %%

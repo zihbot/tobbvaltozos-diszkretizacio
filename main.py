@@ -26,8 +26,8 @@ d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
 d.fit()
 print(d.discretization)
 print(d.column_types)
-d.draw_structure_to_file()
+d.draw_structure_to_file('out.png')
 print(d.evaluate())
 # %%
-
+[1,0,1] == 1
 # %%

@@ -95,6 +95,7 @@ class MultivariateDiscretizer:
         logger.debug("_set_initial_discretizations() Initial discretization: {}".format(self.discretization))
 
     def _discretize_one(self, i: int) -> None:
+        if len(list(self.graph.predecessors(i))) + len(list(self.graph.successors(i))) == 0: return
         df = self.as_dataframe()
         D = self.as_dataframe(self.get_discretized_data())
         try:
@@ -107,10 +108,11 @@ class MultivariateDiscretizer:
             logger.debug("_discretize_one() discretization after: {}".format(disc))
             self.discretization[i] = disc
         except DiscretizationError as e:
-            logger.debug("_discretize_one() discretization after error: {}".format(self.discretization[i]))
             self.discretization[i] = []
+            logger.debug("_discretize_one() discretization after error: {}".format(self.discretization[i]))
 
     def _discretize_all(self, max_cycles: int = 10) -> None:
+        self._set_initial_discretizations()
         for i in range(max_cycles):
             logger.debug("_discretize_all() {}. cycle, discretization before: {}".format(i, self.discretization))
             before_disc = copy.deepcopy(self.discretization)
@@ -123,6 +125,7 @@ class MultivariateDiscretizer:
 
     def fit(self, max_epochs: int = 10) -> None:
         logger.info("fit() started, max epochs: {}".format(max_epochs))
+        """
         for i in range(max_epochs):
             before_disc = copy.deepcopy(self.discretization)
             logger.info("fit() {}. epoch".format(i))
@@ -132,6 +135,29 @@ class MultivariateDiscretizer:
             self.learn_structure()
             if self.discretization == before_disc:
                 break
+
+
+        for i, o in enumerate(order):
+            if self.column_types[o] == ColumnType.DISCRETE: continue
+            logger.info("fit() {}. variable".format(i))
+            curr_order = order[:i+1]
+            self.learn_structure(include_columns=curr_order, order=curr_order)
+            self._discretize_all()
+        """
+        order = order=[4,0,1,2,3]
+        p_step = []
+        p_prev = None
+        while p_step != p_prev:
+            logger.info("fit()")
+            for cvar in self._node_fit_order():
+                logger.debug('Structure around {}: parents={}, children={}'.format(cvar, list(self.graph.predecessors(cvar)), list(self.graph.successors(cvar))))
+            p_prev = copy.deepcopy(p_step)
+            self.learn_structure(order=order, p_step=p_step)
+            self._discretize_all()
+
+            p_step_by_df_order = [list(self.graph.predecessors(i)) for i in sorted(self.graph.nodes)]
+            p_step = [p_step_by_df_order[x] for x in order]
+        self.learn_structure(order=order)
         logger.info("fit() ended")
 
     #endregion
@@ -157,12 +183,15 @@ class MultivariateDiscretizer:
 
     #region Graph
 
-    def model(self) -> pomegranate.BayesianNetwork:
+    def model(self, include_columns: list[int] = None, **kwargs) -> pomegranate.BayesianNetwork:
         #return pomegranate.BayesianNetwork.from_samples(self.get_discretized_data(), algorithm=self.bn_algorithm, penalty=5)
-        return structure.learn_structure(self.get_discretized_data())
+        disc_data = self.get_discretized_data()
+        if include_columns is not None:
+            disc_data = disc_data[include_columns].copy()
+        return structure.learn_structure(disc_data, **kwargs)
 
-    def learn_structure(self):
-        model = self.model()
+    def learn_structure(self, **kwargs):
+        model = self.model(**kwargs)
         self.graph = util.bn_to_graph(model)
 
     def show(self):
