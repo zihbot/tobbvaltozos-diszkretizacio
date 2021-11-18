@@ -8,13 +8,13 @@ import sklearn.datasets
 import logging
 import os
 
-algos = ['chow-liu', 'greedy', 'exact']
+algos = ['chow-liu', 'greedy', 'exact', 'k2']
 #for algo in algos:
 #    try:
-algo = 'greedy'
+algo = 'multi_k2'
 print(algo)
 logging.basicConfig(
-    filename="logs/{}.log".format(datetime.now().strftime("%Y%m%d %H%M%S")),
+    filename="logs/{}/{}.log".format(algo, datetime.now().strftime("%Y%m%d %H%M%S")),
     level=logging.DEBUG,
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
@@ -23,7 +23,7 @@ iris = sklearn.datasets.load_iris()
 data = bediscretizer.util.concat_array(iris['data'], iris['target'])
 d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
 
-d.fit()
+d.fit(100)
 print(d.discretization)
 print(d.column_types)
 d.draw_structure_to_file('out.png')

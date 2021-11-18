@@ -107,7 +107,7 @@ def preference_bias(df: pd.DataFrame, i: int, p: list) -> float:
     result = q * math.log(math.factorial(r - 1))
     result -= np.sum(gammaln(N + r))
     result += np.sum(gammaln(a + 1))
-    return math.exp(result)
+    return result #math.exp(result)
 
 if __name__ == "__main__":
     data = np.array([[1, 2, 3, 4], [1.1, 2.1, 3.1, 4.1]])

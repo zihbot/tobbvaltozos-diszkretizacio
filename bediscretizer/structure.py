@@ -12,7 +12,7 @@ try:
 except:
     import util
 
-def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'k2', **kwargs) -> pomegranate.BayesianNetwork:
+def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'exact', **kwargs) -> pomegranate.BayesianNetwork:
     if algorithm == 'k2':
         g = learn_k2_structure(disctretized_df, **kwargs)
         parents = util.graph_to_bn_structure(g, list(disctretized_df.columns), True)
@@ -37,18 +37,18 @@ def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: i
         P_old = util.preference_bias(df, order[i], p[i])
         ok_to_proceed = True
         while ok_to_proceed and len(p[i]) < upper_bound+1:
-            P_new = 0
+            P_new = None
 
             # find z that maximizes preference_bias
             z = None
             for zi in range(i):
                 if order[zi] in p[i]: continue
                 pb = util.preference_bias(df, order[i], [*p[i], order[zi]])
-                if pb > P_new:
+                if P_new is None or pb > P_new:
                     z = order[zi]
                     P_new = pb
 
-            if P_new > P_old:
+            if P_new is not None and P_new > P_old:
                 P_old = P_new
                 p[i].append(z)
                 if p_step is not None:

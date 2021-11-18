@@ -1,9 +1,11 @@
+import itertools
+import random
 from matplotlib import pyplot as plt
 from pandas.core.algorithms import mode
 
 from bediscretizer import structure
 from .discretization import DiscretizationError, discretize_one
-from typing import Tuple
+from typing import Tuple, Union
 import pandas as pd
 import numpy as np
 import enum
@@ -11,6 +13,7 @@ import pomegranate
 import networkx as nx
 import logging
 import copy
+import math
 from sklearn import metrics
 
 from . import util
@@ -37,7 +40,7 @@ class MultivariateDiscretizer:
     number_of_classes = None
 
     def __init__(self, data: np.ndarray, name: str = "Unknown",
-            bn_algorithm = 'exact', graph: nx.digraph.DiGraph = None) -> None:
+            bn_algorithm = 'multi_k2', graph: nx.digraph.DiGraph = None) -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
         self.name = name
         self.bn_algorithm = bn_algorithm
@@ -49,6 +52,10 @@ class MultivariateDiscretizer:
             self.learn_structure()
         else:
             self.graph = graph
+
+    def _reset(self):
+        self._set_initial_discretizations()
+        self.learn_structure()
 
     #region Preprocessing
 
@@ -125,6 +132,12 @@ class MultivariateDiscretizer:
 
     def fit(self, max_epochs: int = 10) -> None:
         logger.info("fit() started, max epochs: {}".format(max_epochs))
+        if self.bn_algorithm == 'k2':
+            self._fit_k2()
+
+        if self.bn_algorithm == 'multi_k2':
+            self._fit_multi_k2(max_epoch=max_epochs)
+
         """
         for i in range(max_epochs):
             before_disc = copy.deepcopy(self.discretization)
@@ -135,16 +148,44 @@ class MultivariateDiscretizer:
             self.learn_structure()
             if self.discretization == before_disc:
                 break
-
-
-        for i, o in enumerate(order):
-            if self.column_types[o] == ColumnType.DISCRETE: continue
-            logger.info("fit() {}. variable".format(i))
-            curr_order = order[:i+1]
-            self.learn_structure(include_columns=curr_order, order=curr_order)
-            self._discretize_all()
         """
-        order = order=[4,0,1,2,3]
+        logger.info("fit() ended")
+
+    def _fit_multi_k2(self, max_epoch):
+        n = len(self.columns)
+        orders = []
+        if math.factorial(n) > max_epoch:
+            orders = [None] * max_epoch
+        else:
+            orders = itertools.permutations(self.columns)
+        best_order = None
+        best_value = None
+        for i, order in enumerate(orders):
+            logger.info("_fit_multi_k2() {}.".format(i))
+            order_back = self._fit_k2(order)
+            value = 0
+            df = self.get_discretized_data()
+            for i in self.columns:
+                value += util.preference_bias(df, i, list(self.graph.predecessors(i)))
+            if best_value is None or value > best_value:
+                best_value = value
+                best_order = order_back
+            self._reset()
+        self._fit_k2(best_order)
+
+    def _fit_k2(self, order: list[int] = None):
+        if order is None:
+            '''
+            # first are discrete, then conti values
+            discrete = [i for i in range(len(self.column_types)) if self.column_types[i] == ColumnType.DISCRETE]
+            conti = [i for i in range(len(self.column_types)) if self.column_types[i] == ColumnType.CONTINUOUS]
+            random.shuffle(discrete)
+            random.shuffle(conti)
+            order = [*discrete, *conti]
+            '''
+            order = list(range(len(self.columns)))
+            random.shuffle(order)
+        logger.info("_fit_k2() with order: {}".format(order))
         p_step = []
         p_prev = None
         while p_step != p_prev:
@@ -152,13 +193,13 @@ class MultivariateDiscretizer:
             for cvar in self._node_fit_order():
                 logger.debug('Structure around {}: parents={}, children={}'.format(cvar, list(self.graph.predecessors(cvar)), list(self.graph.successors(cvar))))
             p_prev = copy.deepcopy(p_step)
-            self.learn_structure(order=order, p_step=p_step)
+            self.learn_structure(order=order, algorithm='k2', p_step=p_step)
             self._discretize_all()
 
             p_step_by_df_order = [list(self.graph.predecessors(i)) for i in sorted(self.graph.nodes)]
             p_step = [p_step_by_df_order[x] for x in order]
-        self.learn_structure(order=order)
-        logger.info("fit() ended")
+        self.learn_structure(order=order, algorithm='k2')
+        return order
 
     #endregion
 
