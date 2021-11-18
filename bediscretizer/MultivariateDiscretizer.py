@@ -176,7 +176,6 @@ class MultivariateDiscretizer:
                 if not full_graph.has_edge(*e):
                     full_graph.add_edge(*e)
                     break
-            print(full_graph.edges)
 
             if full_graph.edges == before_disc:
                 break

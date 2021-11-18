@@ -11,7 +11,7 @@ import os
 algos = ['chow-liu', 'greedy', 'exact', 'k2', 'multi_k2']
 #for algo in algos:
 #    try:
-algo = 'chow-liu'
+algo = 'multi_k2'
 print(algo)
 if not os.path.isdir('logs/{}'.format(algo)):
     os.mkdir('logs/{}'.format(algo))
@@ -25,7 +25,7 @@ iris = sklearn.datasets.load_iris()
 data = bediscretizer.util.concat_array(iris['data'], iris['target'])
 d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
 
-d.fit(100)
+d.fit(20)
 print(d.discretization)
 print(d.column_types)
 d.draw_structure_to_file('out.png')
