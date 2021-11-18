@@ -12,13 +12,14 @@ try:
 except:
     import util
 
-def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'exact', **kwargs) -> pomegranate.BayesianNetwork:
+def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'exact', include_edges: list[tuple[int]] = [], **kwargs) -> pomegranate.BayesianNetwork:
     if algorithm == 'k2':
         g = learn_k2_structure(disctretized_df, **kwargs)
         parents = util.graph_to_bn_structure(g, list(disctretized_df.columns), True)
         return pomegranate.BayesianNetwork.from_structure(disctretized_df, parents)
     else:
-        return pomegranate.BayesianNetwork.from_samples(disctretized_df, algorithm=algorithm)
+        print(disctretized_df.shape, algorithm, include_edges)
+        return pomegranate.BayesianNetwork.from_samples(disctretized_df, algorithm=algorithm, include_edges=(include_edges if len(include_edges) != 0 else None))
 
 def get_graph(disctretized_df: pd.DataFrame = None) -> nx.DiGraph:
     model = learn_structure(disctretized_df)

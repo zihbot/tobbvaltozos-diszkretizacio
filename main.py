@@ -8,11 +8,13 @@ import sklearn.datasets
 import logging
 import os
 
-algos = ['chow-liu', 'greedy', 'exact', 'k2']
+algos = ['chow-liu', 'greedy', 'exact', 'k2', 'multi_k2']
 #for algo in algos:
 #    try:
-algo = 'multi_k2'
+algo = 'chow-liu'
 print(algo)
+if not os.path.isdir('logs/{}'.format(algo)):
+    os.mkdir('logs/{}'.format(algo))
 logging.basicConfig(
     filename="logs/{}/{}.log".format(algo, datetime.now().strftime("%Y%m%d %H%M%S")),
     level=logging.DEBUG,

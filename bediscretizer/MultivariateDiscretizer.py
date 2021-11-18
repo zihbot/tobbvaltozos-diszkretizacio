@@ -138,8 +138,13 @@ class MultivariateDiscretizer:
         if self.bn_algorithm == 'multi_k2':
             self._fit_multi_k2(max_epoch=max_epochs)
 
-        """
-        for i in range(max_epochs):
+        if self.bn_algorithm in ['chow-liu', 'greedy', 'exact']:
+            self._fit_basic_structure_after_node_added(max_epoch=max_epochs)
+
+        logger.info("fit() ended")
+
+    def _fit_basic_structure_learner(self, max_epoch: int = 10):
+        for i in range(max_epoch):
             before_disc = copy.deepcopy(self.discretization)
             logger.info("fit() {}. epoch".format(i))
             for cvar in self._node_fit_order():
@@ -148,10 +153,36 @@ class MultivariateDiscretizer:
             self.learn_structure()
             if self.discretization == before_disc:
                 break
-        """
-        logger.info("fit() ended")
 
-    def _fit_multi_k2(self, max_epoch):
+    def _fit_basic_structure_after_node_added(self, max_epoch: int = 100):
+        i = 0
+
+        full_graph = nx.DiGraph()
+        full_graph.add_nodes_from(self.columns)
+        self._reset()
+        while i < max_epoch:
+            before_disc = copy.deepcopy(full_graph.edges)
+            logger.info("fit() {}. edge".format(i))
+
+            self._reset()
+            self.graph = full_graph
+
+            self._discretize_all()
+
+            model = self.model(include_edges=list(self.graph.edges))
+            edges = list(util.bn_to_graph(model).edges)
+            random.shuffle(edges)
+            for e in edges:
+                if not full_graph.has_edge(*e):
+                    full_graph.add_edge(*e)
+                    break
+            print(full_graph.edges)
+
+            if full_graph.edges == before_disc:
+                break
+            i += 1
+
+    def _fit_multi_k2(self, max_epoch: int = 10):
         n = len(self.columns)
         orders = []
         if math.factorial(n) > max_epoch:
