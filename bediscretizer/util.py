@@ -109,6 +109,13 @@ def preference_bias(df: pd.DataFrame, i: int, p: list) -> float:
     result += np.sum(gammaln(a + 1))
     return result #math.exp(result)
 
+def preference_bias_full(df: pd.DataFrame, columns: list[int], graph: nx.DiGraph):
+    value = 0
+    for i in columns:
+        value += preference_bias(df, i, list(graph.predecessors(i)))
+    return value
+
+
 if __name__ == "__main__":
     data = np.array([[1, 2, 3, 4], [1.1, 2.1, 3.1, 4.1]])
     policy = np.array([[1.05], [1.9, 3.0], [3.01, 3.07], [4.02]])

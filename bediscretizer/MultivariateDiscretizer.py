@@ -1,6 +1,7 @@
 import itertools
 import random
 from matplotlib import pyplot as plt
+from networkx.generators.small import tetrahedral_graph
 from pandas.core.algorithms import mode
 
 from bediscretizer import structure
@@ -38,6 +39,7 @@ class MultivariateDiscretizer:
     name: str = None
     bn_algorithm: str = None
     number_of_classes = None
+    final_model: pomegranate.BayesianNetwork = None
 
     def __init__(self, data: np.ndarray, name: str = "Unknown",
             bn_algorithm = 'multi_k2', graph: nx.digraph.DiGraph = None) -> None:
@@ -141,6 +143,9 @@ class MultivariateDiscretizer:
         if self.bn_algorithm in ['chow-liu', 'greedy', 'exact']:
             self._fit_basic_structure_after_node_added(max_epoch=max_epochs)
 
+        if self.bn_algorithm in ['best_edge']:
+            self._fit_basic_structure_all_edges(max_epoch=max_epochs)
+
         logger.info("fit() ended")
 
     def _fit_basic_structure_learner(self, max_epoch: int = 10):
@@ -161,7 +166,6 @@ class MultivariateDiscretizer:
         full_graph.add_nodes_from(self.columns)
         self._reset()
         while i < max_epoch:
-            before_disc = copy.deepcopy(full_graph.edges)
             logger.info("fit() {}. edge".format(i))
 
             self._reset()
@@ -171,15 +175,64 @@ class MultivariateDiscretizer:
 
             model = self.model(include_edges=list(self.graph.edges))
             edges = list(util.bn_to_graph(model).edges)
-            random.shuffle(edges)
+            df = self.get_discretized_data()
+
+            best_edge = None
+            best_value = util.preference_bias_full(df, self.columns, self.graph)
             for e in edges:
                 if not full_graph.has_edge(*e):
-                    full_graph.add_edge(*e)
-                    break
+                    g_test = self.graph.copy()
+                    g_test.add_edge(*e)
+                    value = util.preference_bias_full(df, self.columns, g_test)
+                    if best_value is None or value > best_value:
+                        best_value = value
+                        best_edge = e
 
-            if full_graph.edges == before_disc:
+            if best_edge is not None:
+                full_graph.add_edge(*best_edge)
+            else:
                 break
             i += 1
+        self.final_model = self.model()
+
+    def _fit_basic_structure_all_edges(self, max_epoch: int = 100):
+        i = 0
+
+        full_graph = nx.DiGraph()
+        full_graph.add_nodes_from(self.columns)
+        self._reset()
+        while i < max_epoch:
+            logger.info("fit() {}. edge".format(i))
+
+            self._reset()
+            self.graph = full_graph
+
+            self._discretize_all()
+
+            edges = itertools.permutations(self.columns, 2)
+            df = self.get_discretized_data()
+
+            best_edge = None
+            best_value = util.preference_bias_full(df, self.columns, self.graph)
+            for e in edges:
+                if full_graph.has_edge(*e) or full_graph.has_edge(e[1], e[0]):
+                    continue
+
+                g_test = self.graph.copy()
+                g_test.add_edge(*e)
+                if nx.is_directed_acyclic_graph(g_test):
+                    value = util.preference_bias_full(df, self.columns, g_test)
+                    if best_value is None or value > best_value:
+                        best_value = value
+                        best_edge = e
+
+            if best_edge is not None:
+                full_graph.add_edge(*best_edge)
+            else:
+                break
+            i += 1
+        parents =  util.graph_to_bn_structure(full_graph, list(self.columns), True)
+        self.final_model = pomegranate.BayesianNetwork.from_structure(self.get_discretized_data(), parents)
 
     def _fit_multi_k2(self, max_epoch: int = 10):
         n = len(self.columns)
@@ -229,13 +282,17 @@ class MultivariateDiscretizer:
             p_step_by_df_order = [list(self.graph.predecessors(i)) for i in sorted(self.graph.nodes)]
             p_step = [p_step_by_df_order[x] for x in order]
         self.learn_structure(order=order, algorithm='k2')
+        self.final_model = self.model(order=order, algorithm='k2')
         return order
 
     #endregion
 
     #region Evaluate
     def evaluate(self) -> list[float]:
-        model = self.model()
+        if self.final_model is None:
+            model = self.model()
+        else:
+            model = self.final_model
         result =  {}
         for c in self.columns:
             if self.column_types[c] == ColumnType.DISCRETE:
@@ -249,7 +306,20 @@ class MultivariateDiscretizer:
                 result[str(c)] = {'precision': precision, 'recall': recall}
         return result
 
+    def _evaluate(self, y_true, y_pred):
+        precision = metrics.precision_score(y_true, y_pred, average='weighted')
+        recall = metrics.recall_score(y_true, y_pred, average='weighted')
+        return {'precision': precision, 'recall': recall}
 
+    def predict(self, test_data: np.ndarray, column: int) -> np.ndarray:
+        if self.final_model is None:
+            model = self.model()
+        else:
+            model = self.final_model
+        x = util.discretize(pd.DataFrame(test_data), self.discretization).to_numpy()
+        x[:, column] = np.nan
+        pred = np.array(model.predict(x)).astype('int')
+        return pred[:, column]
     #endregion
 
     #region Graph

@@ -1,4 +1,5 @@
 #%%
+import math
 from os import name
 import numpy as np
 import pomegranate
@@ -18,7 +19,8 @@ def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'exact', inc
         parents = util.graph_to_bn_structure(g, list(disctretized_df.columns), True)
         return pomegranate.BayesianNetwork.from_structure(disctretized_df, parents)
     else:
-        return pomegranate.BayesianNetwork.from_samples(disctretized_df, algorithm=algorithm, include_edges=(include_edges if len(include_edges) != 0 else None))
+        penalty = 0 # math.log2(disctretized_df.shape[0]) / 16
+        return pomegranate.BayesianNetwork.from_samples(disctretized_df, algorithm=algorithm, include_edges=(include_edges if len(include_edges) != 0 else None), penalty=penalty)
 
 def get_graph(disctretized_df: pd.DataFrame = None) -> nx.DiGraph:
     model = learn_structure(disctretized_df)
