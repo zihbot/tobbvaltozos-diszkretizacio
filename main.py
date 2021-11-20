@@ -15,7 +15,7 @@ from sklearn.model_selection import KFold
 algos = ['chow-liu', 'greedy', 'exact', 'k2', 'multi_k2', 'best_edge']
 #for algo in algos:
 #    try:
-algo = 'multi_k2'
+algo = 'best_edge'
 print(algo)
 if not os.path.isdir('logs/{}'.format(algo)):
     os.mkdir('logs/{}'.format(algo))
@@ -25,19 +25,24 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-#iris = sklearn.datasets.load_iris()
-#data = bediscretizer.util.concat_array(iris['data'], iris['target'])
+'''
+iris = sklearn.datasets.load_iris()
+data = bediscretizer.util.concat_array(iris['data'], iris['target'])
 
-#X_train, X_test, y_train, y_test = train_test_split(iris['data'], iris['target'], test_size=0.1, random_state=42)
-#data = bediscretizer.util.concat_array(X_train, y_train)
+X_train, X_test, y_train, y_test = train_test_split(iris['data'], iris['target'], test_size=0.1, random_state=42)
+data = bediscretizer.util.concat_array(X_train, y_train)
+d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
+d.fit(20)
+'''
 
 data = pd.read_csv('szivroham.csv')
-data.iloc[:,0] = np.nan
+data.iloc[:,[0,1,2]] = np.nan
 data.dropna(axis=1, how='any', inplace=True)
 N = data.shape[0]
-data = data.drop(random.sample(range(N), k = 499*N//500)).reset_index(drop=True)
+data = data.drop(random.sample(range(N), k = 9*N//10)).reset_index(drop=True)
+data = bediscretizer.util.discretize(data, [[0.9, 1.5],None,None])
+
 d = bediscretizer.MultivariateDiscretizer(data.to_numpy(), 'Szivroham', algo)
-print(d.data.shape)
 d.fit(20)
 
 '''

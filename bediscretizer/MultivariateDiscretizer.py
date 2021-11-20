@@ -82,8 +82,9 @@ class MultivariateDiscretizer:
 
     #region Discretization
 
-    def _set_initial_discretizations(self) -> None:
-        self.discretization = [[]] * len(self.columns)
+    def _set_initial_discretizations(self, only_empty=False) -> None:
+        if not only_empty:
+            self.discretization = [[]] * len(self.columns)
         if self.number_of_classes is None:
             self.number_of_classes = 1
             for i, t in enumerate(self.column_types):
@@ -91,6 +92,8 @@ class MultivariateDiscretizer:
                     self.number_of_classes = len(np.unique(self.data[:, i]))
         for i, t in enumerate(self.column_types):
             if t == ColumnType.CONTINUOUS:
+                if only_empty and len(self.discretization[i]) > 0:
+                    continue
                 d = self.data[:, i]
                 #cutpoints = [x for x in range(0, len(d)-self.number_of_classes, len(d)//self.number_of_classes)][1:]
                 #values = sorted(d)
@@ -100,6 +103,8 @@ class MultivariateDiscretizer:
                 min_val, max_val = min(d), max(d)
                 span = (max_val - min_val) / self.number_of_classes
                 self.discretization[i] = [min_val + span * i for i in range(1, self.number_of_classes)]
+            else:
+                self.discretization[i] = None
         logger.debug("_set_initial_discretizations() Initial discretization: {}".format(self.discretization))
 
     def _discretize_one(self, i: int) -> None:
