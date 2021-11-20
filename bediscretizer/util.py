@@ -17,7 +17,7 @@ def discretize(data: pd.DataFrame, policy: Iterable[Iterable]) -> pd.DataFrame:
     data = data.copy()
 
     for i in range(data.shape[1]):
-        if not policy[i]:
+        if policy[i] is None:
             continue
         data['tmp'] = 0
         for cnt, threshold in enumerate(policy[i]):
