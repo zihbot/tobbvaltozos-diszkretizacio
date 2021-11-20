@@ -39,8 +39,17 @@ data = pd.read_csv('szivroham.csv')
 data.iloc[:,[0,1,2]] = np.nan
 data.dropna(axis=1, how='any', inplace=True)
 N = data.shape[0]
-data = data.drop(random.sample(range(N), k = 9*N//10)).reset_index(drop=True)
+data = data.drop(random.sample(range(N), k = 49*N//50)).reset_index(drop=True)
 data = bediscretizer.util.discretize(data, [[0.9, 1.5],None,None])
+
+min1 = data.quantile(.05)[1]
+min2 = data.quantile(.05)[2]
+max1 = data.quantile(.95)[1]
+max2 = data.quantile(.95)[2]
+
+data[(data.iloc[:,1] < min1) | (data.iloc[:,1] > max1)] = np.nan
+data[(data.iloc[:,2] < min2) | (data.iloc[:,2] > max2)] = np.nan
+data.dropna(axis=0, how='any', inplace=True)
 
 d = bediscretizer.MultivariateDiscretizer(data.to_numpy(), 'Szivroham', algo)
 d.fit(20)
