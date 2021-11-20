@@ -68,15 +68,14 @@ class MultivariateDiscretizer:
 
     def _string_array_to_int(self, data: np.ndarray) -> Tuple[np.ndarray, dict]:
         decoders = {}
-        if np.issubdtype(data.dtype, str):
-            for col_id in range(data.shape[1]):
-                try:
-                    data[:, col_id].astype(float)
-                except ValueError:
-                    unique: np.ndarray = np.unique(data[:, col_id])
-                    decoders[col_id] = unique
-                    encoder = dict((j,i) for i,j in enumerate(unique))
-                    data[:, col_id] = np.array([encoder[i] for i in data[:, col_id]])
+        for col_id in range(data.shape[1]):
+            try:
+                data[:, col_id].astype(float)
+            except ValueError:
+                unique: np.ndarray = np.unique(data[:, col_id])
+                decoders[col_id] = unique
+                encoder = dict((j,i) for i,j in enumerate(unique))
+                data[:, col_id] = np.array([encoder[i] for i in data[:, col_id]])
         return data.astype(float), decoders
 
     #endregion
