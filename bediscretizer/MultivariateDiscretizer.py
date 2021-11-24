@@ -270,8 +270,11 @@ class MultivariateDiscretizer:
             random.shuffle(conti)
             order = [*discrete, *conti]
             '''
+            '''
             order = list(range(len(self.columns)))
             random.shuffle(order)
+            '''
+            order = structure.k2_order(self.get_discretized_data())
         logger.info("_fit_k2() with order: {}".format(order))
         p_step = []
         p_prev = None

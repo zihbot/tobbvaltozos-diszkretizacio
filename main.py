@@ -15,7 +15,7 @@ from sklearn.model_selection import KFold
 algos = ['chow-liu', 'greedy', 'exact', 'k2', 'multi_k2', 'best_edge']
 #for algo in algos:
 #    try:
-algo = 'best_edge'
+algo = 'k2'
 print(algo)
 if not os.path.isdir('logs/{}'.format(algo)):
     os.mkdir('logs/{}'.format(algo))
@@ -25,7 +25,6 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-'''
 iris = sklearn.datasets.load_iris()
 data = bediscretizer.util.concat_array(iris['data'], iris['target'])
 
@@ -55,6 +54,7 @@ d = bediscretizer.MultivariateDiscretizer(data.to_numpy(), 'Szivroham', algo)
 d.fit(20)
 
 '''
+'''
 kf = KFold(n_splits=10, shuffle=True, random_state=235)
 for train_i, test_i in kf.split(data):
     d = bediscretizer.MultivariateDiscretizer(data[train_i, :], 'Iris', algo)
@@ -72,4 +72,10 @@ d.draw_structure_to_file('out.png')
 #print(d.evaluate())
 # %%
 [1,0,1] == 1
+# %%
+
+# %%
+import random
+for i in range(10):
+    print("{:.2f}".format(random.random()*2))
 # %%
