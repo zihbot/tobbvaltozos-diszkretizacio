@@ -42,13 +42,17 @@ class MultivariateDiscretizer:
     final_model: pomegranate.BayesianNetwork = None
 
     def __init__(self, data: np.ndarray, name: str = "Unknown",
-            bn_algorithm = 'multi_k2', graph: nx.digraph.DiGraph = None) -> None:
+            bn_algorithm = 'multi_k2', graph: nx.digraph.DiGraph = None,
+            column_types: list[ColumnType] = None) -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
         self.name = name
         self.bn_algorithm = bn_algorithm
         self.data, self.column_unique_values = self._string_array_to_int(data)
         self.columns = self.column_labels = range(data.shape[1])
-        self._set_column_types()
+        if column_types is None:
+            self._set_column_types()
+        else:
+            self.column_types = column_types
         self._set_initial_discretizations()
         if graph is None:
             self.learn_structure()

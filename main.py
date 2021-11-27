@@ -12,6 +12,8 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
+from bediscretizer.MultivariateDiscretizer import ColumnType
+
 algos = ['chow-liu', 'greedy', 'exact', 'k2', 'multi_k2', 'best_edge']
 #for algo in algos:
 #    try:
@@ -25,13 +27,21 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-iris = sklearn.datasets.load_iris()
-data = bediscretizer.util.concat_array(iris['data'], iris['target'])
 
-X_train, X_test, y_train, y_test = train_test_split(iris['data'], iris['target'], test_size=0.1, random_state=42)
+#dataset = sklearn.datasets.load_iris()
+dataset = sklearn.datasets.load_diabetes()
+data = bediscretizer.util.concat_array(dataset['data'], dataset['target'])
+print(dataset)
+exit()
+X_train, X_test, y_train, y_test = train_test_split(dataset['data'], dataset['target'], test_size=0.1, random_state=42)
 data = bediscretizer.util.concat_array(X_train, y_train)
-d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
+#d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
+coltype = [ColumnType.CONTINUOUS] * data.shape[1]
+coltype[1] = ColumnType.DISCRETE
+d = bediscretizer.MultivariateDiscretizer(data, 'Diabetes', algo, column_types=coltype)
+
 d.fit(20)
+
 '''
 
 data = pd.read_csv('szivroham.csv')
