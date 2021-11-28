@@ -317,10 +317,22 @@ class MultivariateDiscretizer:
                 result[str(c)] = {'precision': precision, 'recall': recall}
         return result
 
-    def _evaluate(self, y_true, y_pred):
-        precision = metrics.precision_score(y_true, y_pred, average='weighted')
-        recall = metrics.recall_score(y_true, y_pred, average='weighted')
-        return {'precision': precision, 'recall': recall}
+    def evaluate(self, y_true: np.ndarray, y_pred: np.ndarray, current: dict = None):
+        if current is None: current = {}
+        if 'TP' not in current: current['TP'] = []
+        if 'FP' not in current: current['FP'] = []
+        if 'TN' not in current: current['TN'] = []
+        if 'FN' not in current: current['FN'] = []
+
+        confusion_matrix = metrics.confusion_matrix(y_true, y_pred)
+        current['FP'].append(confusion_matrix.sum(axis=0) - np.diag(confusion_matrix))
+        current['FN'].append(confusion_matrix.sum(axis=1) - np.diag(confusion_matrix))
+        current['TP'].append(np.diag(confusion_matrix))
+        current['TN'].append(confusion_matrix.sum() - (current['FP'][-1] + current['FN'][-1] + current['TP'][-1]))
+        return current
+
+    def evalutaion_summary(self, evaluation: dict):
+        print(np.ndarray(evaluation['TP']))
 
     def predict(self, test_data: np.ndarray, column: int) -> np.ndarray:
         if self.final_model is None:
