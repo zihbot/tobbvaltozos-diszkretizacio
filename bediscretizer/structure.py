@@ -14,7 +14,7 @@ except:
     import util
 
 def learn_structure(disctretized_df: pd.DataFrame, algorithm: str = 'exact', include_edges: list[tuple[int]] = [], **kwargs) -> pomegranate.BayesianNetwork:
-    if algorithm == 'k2':
+    if algorithm == 'k2' or algorithm == 'multi_k2':
         g = learn_k2_structure(disctretized_df, **kwargs)
         parents = util.graph_to_bn_structure(g, list(disctretized_df.columns), True)
         return pomegranate.BayesianNetwork.from_structure(disctretized_df, parents)

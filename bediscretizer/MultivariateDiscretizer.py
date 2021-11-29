@@ -40,13 +40,15 @@ class MultivariateDiscretizer:
     bn_algorithm: str = None
     number_of_classes = None
     final_model: pomegranate.BayesianNetwork = None
+    initial_discretizer: str = None
 
     def __init__(self, data: np.ndarray, name: str = "Unknown",
             bn_algorithm = 'multi_k2', graph: nx.digraph.DiGraph = None,
-            column_types: list[ColumnType] = None) -> None:
+            column_types: list[ColumnType] = None, initial_discretizer='equal_width') -> None:
         assert len(data.shape) == 2, 'Only supports 2 dimensional matricies!'
         self.name = name
         self.bn_algorithm = bn_algorithm
+        self.initial_discretizer = initial_discretizer
         self.data, self.column_unique_values = self._string_array_to_int(data)
         self.columns = self.column_labels = range(data.shape[1])
         if column_types is None:
@@ -103,10 +105,15 @@ class MultivariateDiscretizer:
                 #values = sorted(d)
                 #self.discretization[i] = [values[it] for it in cutpoints]
 
-                # Equal width
-                min_val, max_val = min(d), max(d)
-                span = (max_val - min_val) / self.number_of_classes
-                self.discretization[i] = [min_val + span * i for i in range(1, self.number_of_classes)]
+                if self.initial_discretizer == 'equal_sample':
+                    cutpoints = [x for x in range(0, len(d)-self.number_of_classes, round(len(d)/self.number_of_classes))][1:]
+                    values = sorted(d)
+                    self.discretization[i] = [values[it-1] for it in cutpoints]
+                else:
+                    # Equal width
+                    min_val, max_val = min(d), max(d)
+                    span = (max_val - min_val) / self.number_of_classes
+                    self.discretization[i] = [min_val + span * i for i in range(1, self.number_of_classes)]
             else:
                 self.discretization[i] = None
         logger.debug("_set_initial_discretizations() Initial discretization: {}".format(self.discretization))
@@ -264,6 +271,9 @@ class MultivariateDiscretizer:
             self._reset()
         self._fit_k2(best_order)
 
+    def fit_k2(self, order):
+        self._fit_k2(order)
+
     def _fit_k2(self, order: list[int] = None):
         if order is None:
             '''
@@ -287,13 +297,13 @@ class MultivariateDiscretizer:
             for cvar in self._node_fit_order():
                 logger.debug('Structure around {}: parents={}, children={}'.format(cvar, list(self.graph.predecessors(cvar)), list(self.graph.successors(cvar))))
             p_prev = copy.deepcopy(p_step)
-            self.learn_structure(order=order, algorithm='k2', p_step=p_step)
+            self.learn_structure(order=order, p_step=p_step)
             self._discretize_all()
 
             p_step_by_df_order = [list(self.graph.predecessors(i)) for i in sorted(self.graph.nodes)]
             p_step = [p_step_by_df_order[x] for x in order]
-        self.learn_structure(order=order, algorithm='k2')
-        self.final_model = self.model(order=order, algorithm='k2')
+        self.learn_structure(order=order)
+        self.final_model = self.model(order=order)
         return order
 
     #endregion
@@ -368,7 +378,7 @@ class MultivariateDiscretizer:
         disc_data = self.get_discretized_data()
         if include_columns is not None:
             disc_data = disc_data[include_columns].copy()
-        return structure.learn_structure(disc_data, **kwargs)
+        return structure.learn_structure(disc_data, algorithm=self.bn_algorithm, **kwargs)
 
     def learn_structure(self, **kwargs):
         model = self.model(**kwargs)
