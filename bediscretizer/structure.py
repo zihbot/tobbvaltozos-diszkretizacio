@@ -26,7 +26,7 @@ def get_graph(disctretized_df: pd.DataFrame = None) -> nx.DiGraph:
     model = learn_structure(disctretized_df)
     return util.bn_to_graph(model)
 
-def k2_order(disctretized_df: pd.DataFrame) -> list[int]:
+def k2_order_mutual_information(disctretized_df: pd.DataFrame) -> list[int]:
     order = []
     ndarray = disctretized_df.to_numpy().transpose()
     not_in_order = list(range(ndarray.shape[0]))
@@ -42,6 +42,23 @@ def k2_order(disctretized_df: pd.DataFrame) -> list[int]:
         order.append(max_mi_id)
         not_in_order.remove(max_mi_id)
 
+    return order
+
+def k2_order_entropies(disctretized_df: pd.DataFrame) -> list[int]:
+    order = []
+    ndarray = disctretized_df.to_numpy().transpose()
+    not_in_order = list(range(ndarray.shape[0]))
+    entropies = [util.entropy(ndarray[i]) for i in not_in_order]
+
+    min_enrtropy_id = np.argmin(entropies)
+    order.append(min_enrtropy_id)
+    not_in_order.remove(min_enrtropy_id)
+
+    while len(not_in_order) > 0:
+        condi_entropies = [util.relative_entropy(ndarray[i], ndarray[order]) for i in not_in_order]
+        min_condi_id = not_in_order[np.argmin(condi_entropies)]
+        order.append(min_condi_id)
+        not_in_order.remove(min_condi_id)
     return order
 
 def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: int = 2, p_step: list[list[int]] = None) -> nx.DiGraph:
