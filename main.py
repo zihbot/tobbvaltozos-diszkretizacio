@@ -40,17 +40,18 @@ data = bediscretizer.util.concat_array(dataset['data'], dataset['target'])
 #coltype = [ColumnType.CONTINUOUS] * data.shape[1]
 
 #coltype[1] = ColumnType.DISCRETE
+begin_time = time()
 d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
 #d.learn_structure(algorithm="chow-liu")
 
-d._fit_k2([4,0,1,2,3])
-#d.fit(20)
+d._fit_k2([4, 0, 1, 2, 3])
 
-
+end_time = time()
 print('discretization')
 for disc in d.discretization:
     if disc is not None: print(', '.join(map(lambda d: '{:.2f}'.format(d), disc)))
 d.draw_structure_to_file('out.png')
+print('Time {:.3f}'.format(end_time-begin_time))
 
 # %%
 from datetime import date, datetime
@@ -88,14 +89,18 @@ kf = KFold(n_splits=10, shuffle=True, random_state=235)
 evaluation = None
 for train_i, test_i in kf.split(data):
     d = bediscretizer.MultivariateDiscretizer(data[train_i, :], 'Iris', algo)
-    d._fit_k2([4,0,1,2,3])
+    d._fit_k2([4, 1, 3, 0, 2])
 
     test_col = 4
     y_pred = d.predict(data[test_i, :], test_col)
     evaluation = d.evaluate(data[test_i, test_col], y_pred, evaluation)
 
-print('evalutation', evaluation)
-print(d.evalutaion_summary(evaluation))
+summary = d.evalutaion_summary(evaluation)
+print('summary')
+for sumkey in summary.keys():
+    print(sumkey)
+for sumval in summary.values():
+    print(sumval if isinstance(sumval, int) else '{:.2f}'.format(sumval))
 
 # %%
 '''

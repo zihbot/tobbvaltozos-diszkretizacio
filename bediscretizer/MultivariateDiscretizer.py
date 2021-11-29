@@ -274,11 +274,11 @@ class MultivariateDiscretizer:
             random.shuffle(conti)
             order = [*discrete, *conti]
             '''
-            '''
+
             order = list(range(len(self.columns)))
             random.shuffle(order)
-            '''
-            order = structure.k2_order(self.get_discretized_data())
+
+            #order = structure.k2_order(self.get_discretized_data())
         logger.info("_fit_k2() with order: {}".format(order))
         p_step = []
         p_prev = None
@@ -332,7 +332,23 @@ class MultivariateDiscretizer:
         return current
 
     def evalutaion_summary(self, evaluation: dict):
-        print(np.ndarray(evaluation['TP']))
+        tp = np.array(evaluation['TP']).sum()
+        fp = np.array(evaluation['FP']).sum()
+        tn = np.array(evaluation['TN']).sum()
+        fn = np.array(evaluation['FN']).sum()
+
+        ppv = tp / (tp + fp)
+        tpr = tp / (tp + fn)
+        return({
+            'TP': tp,
+            'FP': fp,
+            'TPR': tp / (tp + fn),
+            'FDR': fp / (fp + tp),
+            'PPV': tp / (tp + fp),
+            'ACC': (tp + tn) / (tp + fp + tn + fn),
+            'MCC': (tp * tn - fp * fn) / math.sqrt((tp + fp)*(tp + fn)*(tn + fp)*(tn + fn)),
+            'F-measure': 2 * (ppv * tpr) / (ppv + tpr)
+        })
 
     def predict(self, test_data: np.ndarray, column: int) -> np.ndarray:
         if self.final_model is None:
