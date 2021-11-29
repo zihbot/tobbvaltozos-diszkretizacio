@@ -61,7 +61,7 @@ def k2_order_entropies(disctretized_df: pd.DataFrame) -> list[int]:
         not_in_order.remove(min_condi_id)
     return order
 
-def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: int = 2, p_step: list[list[int]] = None) -> nx.DiGraph:
+def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: int = 3, p_step: list[list[int]] = None) -> nx.DiGraph:
     if order is None:
         order = list(df.columns)
         random.shuffle(order)

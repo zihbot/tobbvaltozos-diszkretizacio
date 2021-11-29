@@ -269,6 +269,7 @@ class MultivariateDiscretizer:
                 best_value = value
                 best_order = order_back
             self._reset()
+        print('Best order', best_order)
         self._fit_k2(best_order)
 
     def fit_k2(self, order):
@@ -342,10 +343,16 @@ class MultivariateDiscretizer:
         return current
 
     def evalutaion_summary(self, evaluation: dict):
+        tp = sum([sum(x) for x in evaluation['TP']])
+        fp = sum([sum(x) for x in evaluation['FP']])
+        tn = sum([sum(x) for x in evaluation['TN']])
+        fn = sum([sum(x) for x in evaluation['FN']])
+        '''
         tp = np.array(evaluation['TP']).sum()
         fp = np.array(evaluation['FP']).sum()
         tn = np.array(evaluation['TN']).sum()
         fn = np.array(evaluation['FN']).sum()
+        '''
 
         ppv = tp / (tp + fp)
         tpr = tp / (tp + fn)

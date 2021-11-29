@@ -15,13 +15,12 @@ from sklearn.model_selection import KFold
 from bediscretizer import util
 import networkx as nx
 from bediscretizer import structure
-from bediscretizer import discretization
 from bediscretizer.MultivariateDiscretizer import ColumnType
 
 algos = ['greedy', 'chow-liu', 'exact', 'k2', 'multi_k2', 'best_edge']
 #for algo in algos:
 #    try:
-algo = 'chow-liu'
+algo = 'k2'
 print(algo)
 if not os.path.isdir('logs/{}'.format(algo)):
     os.mkdir('logs/{}'.format(algo))
@@ -31,28 +30,22 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-dataset = sklearn.datasets.load_boston()
+dataset = sklearn.datasets.load_iris()
+#dataset = sklearn.datasets.load_diabetes()
 data = bediscretizer.util.concat_array(dataset['data'], dataset['target'])
-column_types = [ColumnType.CONTINUOUS] * 14
-column_types[3] = ColumnType.DISCRETE
-column_types[8] = ColumnType.DISCRETE
 
+#X_train, X_test, y_train, y_test = train_test_split(dataset['data'], dataset['target'], test_size=0.1, random_state=42)
+#data = bediscretizer.util.concat_array(X_train, y_train)
+#d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo)
+#coltype = [ColumnType.CONTINUOUS] * data.shape[1]
+
+#coltype[1] = ColumnType.DISCRETE
 begin_time = time()
-d = bediscretizer.MultivariateDiscretizer(
-    data,
-    'Housing',
-    algo,
-    column_types=column_types,
-    initial_discretizer='equal_sample'
-)
-print('time')
+d = bediscretizer.MultivariateDiscretizer(data, 'Iris', algo, initial_discretizer='equal_sample')
+#d.learn_structure(algorithm="chow-liu")
 
-
-d.learn_structure()
-#order = structure.k2_order_entropies(d.get_discretized_data())
-#print(order)
-#d.fit_k2(order=[3, 4, 6, 1, 7, 2, 8, 12, 13, 9, 0, 5, 10, 11])
-#d.fit(10)
+#d._fit_k2([4, 0, 1, 2, 3])
+d.learn_structure(order=[4,0,1,2,3])
 
 end_time = time()
 print('discretization')
@@ -80,7 +73,7 @@ import networkx as nx
 from bediscretizer import structure
 from bediscretizer.MultivariateDiscretizer import ColumnType
 
-algo = 'chow-liu'
+algo = 'exact'
 print(algo)
 if not os.path.isdir('logs/{}'.format(algo)):
     os.mkdir('logs/{}'.format(algo))
@@ -90,32 +83,19 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-dataset = sklearn.datasets.load_boston()
+dataset = sklearn.datasets.load_iris()
 data = bediscretizer.util.concat_array(dataset['data'], dataset['target'])
-column_types = [ColumnType.CONTINUOUS] * 14
-column_types[3] = ColumnType.DISCRETE
-column_types[8] = ColumnType.DISCRETE
 
 kf = KFold(n_splits=10, shuffle=True, random_state=235)
 evaluation = None
 for train_i, test_i in kf.split(data):
-    print('New epoch')
-    d = bediscretizer.MultivariateDiscretizer(
-        data,
-        'Housing',
-        algo,
-        column_types=column_types,
-        initial_discretizer='equal_sample'
-    )
+    d = bediscretizer.MultivariateDiscretizer(data[train_i, :], 'Iris', algo, initial_discretizer='equal_sample')
 
-    #d.fit_k2(order=[1,5,6,12,13,9,2,8,10,3,11,0,7,4])
-    d.learn_structure()
-    #print(list(d.graph.edges))
-    #order = structure.k2_order_entropies(d.get_discretized_data())
-    #print(order)
-    #d.fit_k2(order=order)
+    #d._fit_k2([4, 0, 1, 2, 3])
+    d.learn_structure(order=[4,0,1,2,3])
+    print(list(d.graph.edges))
 
-    test_col = 8
+    test_col = 4
     y_pred = d.predict(data[test_i, :], test_col)
     evaluation = d.evaluate(data[test_i, test_col], y_pred, evaluation)
 
@@ -169,35 +149,28 @@ from bediscretizer import structure
 from bediscretizer.MultivariateDiscretizer import ColumnType
 import matplotlib.pyplot as plt
 
-dataset = sklearn.datasets.load_boston()
-data = bediscretizer.util.concat_array(dataset['data'], dataset['target'])
-column_types = [ColumnType.CONTINUOUS] * 14
-column_types[3] = ColumnType.DISCRETE
-column_types[8] = ColumnType.DISCRETE
-
-begin_time = time()
-d = bediscretizer.MultivariateDiscretizer(
-    data,
-    'Housing',
-    algo,
-    column_types=column_types,
-    initial_discretizer='equal_width'
-)
-disc = d.discretization
-
-for di in d.discretization:
-    if di is not None: print(', '.join(map(lambda d: '{:.2f}'.format(d), di)))
+dataset = sklearn.datasets.load_iris()
+disc = [[5.45, 6.15],
+[2.95, 3.35],
+[2.45, 4.75],
+[0.80, 1.75]]
+disc2 = [[5.50, 6.70],
+[2.90, 3.20],
+[1.90, 4.90],
+[0.60, 1.60]]
+disc3 = [[5.50, 6.70],
+[2.80, 3.60],
+[2.97, 4.93],
+[0.90, 1.70]]
 
 
 fig, ax = plt.subplots()
-plt.scatter(dataset['data'][:, 0], dataset['data'][:, 1], c=dataset['data'][:, 8])
-ax.set_xticks(disc[0])
-ax.set_yticks(disc[1])
+plt.scatter(dataset['data'][:, 2], dataset['data'][:, 3], c=dataset['target'])
+ax.set_xticks(disc3[2])
+ax.set_yticks(disc3[3])
 ax.xaxis.grid(True)
 ax.yaxis.grid(True)
-ax.set_xlabel('Bűnözés')
-ax.set_ylabel('Zóna')
-ax.set_xticklabels(['9.89', '19.78', '29.66', '39.55', '49.43', '59.32','69.21', '79.09'])
-ax.set_yticklabels(['11.11', '22.22', '33.33', '44.44', '55.56', '66.67', '77.78', '88.89'])
-plt.savefig('housing_0_1_width')
+ax.set_xlabel('Sziromlevél hossz')
+ax.set_ylabel('Sziromlevél szélesség')
+plt.savefig('2-3_disc')
 # %%
