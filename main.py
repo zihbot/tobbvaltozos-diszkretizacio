@@ -32,30 +32,45 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-df = pd.read_csv('covid.csv')
-print(df.head())
-
-# %%
-# %%
-
-print(df.shape)
-mins = df.quantile(.05)
-maxs = df.quantile(.95)
-for i, c in enumerate([0, 2, 3, 4]):
-    df[(df.iloc[:,c] < mins[i]) | (df.iloc[:,c] > maxs[i])] = np.nan
+df = pd.read_csv('covid.csv', sep=';')
+ids = [1,2]
+#ids.extend(range(6,20))
+ids.extend(range(6,20))
+df = df.iloc[:,ids]
+#df[df.iloc[:,2] > 2] = np.nan
 df.dropna(axis=0, how='any', inplace=True)
 print(df.shape)
 
-drop_indices = np.random.choice(df.index, (df.shape[0] * 99) // 100, replace=False)
-df = df.drop(drop_indices)
+'''
+for i, c in enumerate(range(df.shape[1])):
+    if c == 1: continue
+    mins = df.iloc[:,c].quantile(.05)
+    maxs = df.iloc[:,c].quantile(.95)
+    df[(df.iloc[:,c] < mins) | (df.iloc[:,c] > maxs)] = np.nan
+df.dropna(axis=0, how='any', inplace=True)
+print(df.shape)
+'''
+
+'''
+for i, c in enumerate([1, 2, 3, 4, 5]):
+    plt.hist(df.iloc[:, c])
+    plt.show()
+'''
+
+#drop_indices = np.random.choice(df.index, (df.shape[0] * 99) // 100, replace=False)
+#df = df.drop(drop_indices)
 data = df.to_numpy()
 
+column_types = [ColumnType.CONTINUOUS] * df.shape[1]
+column_types[1] = ColumnType.DISCRETE
+
+data = np.repeat(data, [3 if x == 'positive' else 1 for x in data[:, 1]], axis=0)
 begin_time = time()
 d = bediscretizer.MultivariateDiscretizer(
     data,
-    'Szivproblema',
+    'Covid',
     algo,
-    #column_types=column_types,
+    column_types=column_types,
     initial_discretizer='equal_sample'
 )
 
@@ -71,6 +86,7 @@ for disc in d.discretization:
     if disc is not None: print(', '.join(map(lambda d: '{:.2f}'.format(d), disc)))
 d.draw_structure_to_file('out.png')
 print('Time {:.3f}'.format(end_time-begin_time))
+print(np.sum(d.predict(data.copy(), 1)))
 #%%
 
 # %%
@@ -92,7 +108,7 @@ import networkx as nx
 from bediscretizer import structure
 from bediscretizer.MultivariateDiscretizer import ColumnType
 
-algo = 'chow-liu'
+algo = 'k2'
 print(algo)
 if not os.path.isdir('logs/{}'.format(algo)):
     os.mkdir('logs/{}'.format(algo))
@@ -102,33 +118,46 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-dataset = sklearn.datasets.load_boston()
-data = bediscretizer.util.concat_array(dataset['data'], dataset['target'])
-column_types = [ColumnType.CONTINUOUS] * 14
-column_types[3] = ColumnType.DISCRETE
-column_types[8] = ColumnType.DISCRETE
+df = pd.read_csv('covid.csv', sep=';')
+ids = [1,2]
+ids.extend(range(6,20))
+df = df.iloc[:,ids]
+#df[df.iloc[:,2] > 2] = np.nan
+df.dropna(axis=0, how='any', inplace=True)
+print(df.shape)
 
-kf = KFold(n_splits=10, shuffle=True, random_state=235)
+data = df.to_numpy()
+data[:, 1] = [1 if x == 'positive' else 0 for x in data[:, 1]]
+column_types = [ColumnType.CONTINUOUS] * df.shape[1]
+column_types[1] = ColumnType.DISCRETE
+
+kf = KFold(n_splits=6, shuffle=True, random_state=235)
 evaluation = None
 for train_i, test_i in kf.split(data):
     print('New epoch')
+    train = data[train_i, :]
+    train = np.repeat(train, [3 if x == 1 else 1 for x in train[:, 1]], axis=0)
+
     d = bediscretizer.MultivariateDiscretizer(
-        data,
-        'Housing',
+        train,
+        'Covid',
         algo,
         column_types=column_types,
         initial_discretizer='equal_sample'
     )
 
     #d.fit_k2(order=[1,5,6,12,13,9,2,8,10,3,11,0,7,4])
-    d.learn_structure()
+    #d.learn_structure()
     #print(list(d.graph.edges))
-    #order = structure.k2_order_entropies(d.get_discretized_data())
-    #print(order)
-    #d.fit_k2(order=order)
+    order = structure.k2_order_entropies(d.get_discretized_data())
+    print(order)
+    d.fit_k2(order=order)
 
-    test_col = 8
+    test_col = 1
     y_pred = d.predict(data[test_i, :], test_col)
+    if y_pred.max() == 0:
+        print('Zeroes')
+        continue
     evaluation = d.evaluate(data[test_i, test_col], y_pred, evaluation)
 
 summary = d.evalutaion_summary(evaluation)
@@ -138,6 +167,7 @@ for sumkey in summary.keys():
 for sumval in summary.values():
     print(sumval if isinstance(sumval, int) else '{:.2f}'.format(sumval))
 
+# %%
 # %%
 '''
 

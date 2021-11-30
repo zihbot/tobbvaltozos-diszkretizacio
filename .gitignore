@@ -5,3 +5,4 @@ test/*
 documentation/*
 covid/*.csv
 szivroham.csv
+covid.csv

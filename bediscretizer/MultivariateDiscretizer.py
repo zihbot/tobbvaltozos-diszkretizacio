@@ -335,7 +335,7 @@ class MultivariateDiscretizer:
         if 'TN' not in current: current['TN'] = []
         if 'FN' not in current: current['FN'] = []
 
-        confusion_matrix = metrics.confusion_matrix(y_true, y_pred)
+        confusion_matrix = metrics.confusion_matrix(y_true.astype(int), y_pred.astype(int))
         current['FP'].append(confusion_matrix.sum(axis=0) - np.diag(confusion_matrix))
         current['FN'].append(confusion_matrix.sum(axis=1) - np.diag(confusion_matrix))
         current['TP'].append(np.diag(confusion_matrix))

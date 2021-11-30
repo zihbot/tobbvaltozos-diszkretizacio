@@ -101,7 +101,7 @@ evaluation = None
 for train_i, test_i in kf.split(data):
     print('New epoch')
     d = bediscretizer.MultivariateDiscretizer(
-        data,
+        data[train_i, :],
         'Housing',
         algo,
         column_types=column_types,
