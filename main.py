@@ -33,9 +33,9 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 
 df = pd.read_csv('covid.csv', sep=';')
-ids = [1,2]
+ids = [2,8,9,11,13,14,16,18]
+#ids = [1,2]
 #ids.extend(range(6,20))
-ids.extend(range(6,20))
 df = df.iloc[:,ids]
 #df[df.iloc[:,2] > 2] = np.nan
 df.dropna(axis=0, how='any', inplace=True)
@@ -62,9 +62,9 @@ for i, c in enumerate([1, 2, 3, 4, 5]):
 data = df.to_numpy()
 
 column_types = [ColumnType.CONTINUOUS] * df.shape[1]
-column_types[1] = ColumnType.DISCRETE
+column_types[0] = ColumnType.DISCRETE
 
-data = np.repeat(data, [3 if x == 'positive' else 1 for x in data[:, 1]], axis=0)
+data = np.repeat(data, [3 if x == 'positive' else 1 for x in data[:, 0]], axis=0)
 begin_time = time()
 d = bediscretizer.MultivariateDiscretizer(
     data,
@@ -119,24 +119,25 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 
 df = pd.read_csv('covid.csv', sep=';')
-ids = [1,2]
-ids.extend(range(6,20))
+ids = [2,8,9,11,13,14,16,18]
+#ids = [1,2]
+#ids.extend(range(6,20))
 df = df.iloc[:,ids]
 #df[df.iloc[:,2] > 2] = np.nan
 df.dropna(axis=0, how='any', inplace=True)
 print(df.shape)
 
 data = df.to_numpy()
-data[:, 1] = [1 if x == 'positive' else 0 for x in data[:, 1]]
+data[:, 0] = [1 if x == 'positive' else 0 for x in data[:, 0]]
 column_types = [ColumnType.CONTINUOUS] * df.shape[1]
-column_types[1] = ColumnType.DISCRETE
+column_types[0] = ColumnType.DISCRETE
 
 kf = KFold(n_splits=6, shuffle=True, random_state=235)
 evaluation = None
 for train_i, test_i in kf.split(data):
     print('New epoch')
     train = data[train_i, :]
-    train = np.repeat(train, [3 if x == 1 else 1 for x in train[:, 1]], axis=0)
+    train = np.repeat(train, [3 if x == 1 else 1 for x in train[:, 0]], axis=0)
 
     d = bediscretizer.MultivariateDiscretizer(
         train,
@@ -153,7 +154,7 @@ for train_i, test_i in kf.split(data):
     print(order)
     d.fit_k2(order=order)
 
-    test_col = 1
+    test_col = 0
     y_pred = d.predict(data[test_i, :], test_col)
     if y_pred.max() == 0:
         print('Zeroes')
