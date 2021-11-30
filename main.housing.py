@@ -17,12 +17,11 @@ import networkx as nx
 from bediscretizer import structure
 from bediscretizer import discretization
 from bediscretizer.MultivariateDiscretizer import ColumnType
-import matplotlib.pyplot as plt
 
 algos = ['greedy', 'chow-liu', 'exact', 'k2', 'multi_k2', 'best_edge']
 #for algo in algos:
 #    try:
-algo = 'k2'
+algo = 'chow-liu'
 print(algo)
 if not os.path.isdir('logs/{}'.format(algo)):
     os.mkdir('logs/{}'.format(algo))
@@ -32,37 +31,27 @@ logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-df = pd.read_csv('covid.csv')
-print(df.head())
-
-# %%
-# %%
-
-print(df.shape)
-mins = df.quantile(.05)
-maxs = df.quantile(.95)
-for i, c in enumerate([0, 2, 3, 4]):
-    df[(df.iloc[:,c] < mins[i]) | (df.iloc[:,c] > maxs[i])] = np.nan
-df.dropna(axis=0, how='any', inplace=True)
-print(df.shape)
-
-drop_indices = np.random.choice(df.index, (df.shape[0] * 99) // 100, replace=False)
-df = df.drop(drop_indices)
-data = df.to_numpy()
+dataset = sklearn.datasets.load_boston()
+data = bediscretizer.util.concat_array(dataset['data'], dataset['target'])
+column_types = [ColumnType.CONTINUOUS] * 14
+column_types[3] = ColumnType.DISCRETE
+column_types[8] = ColumnType.DISCRETE
 
 begin_time = time()
 d = bediscretizer.MultivariateDiscretizer(
     data,
-    'Szivproblema',
+    'Housing',
     algo,
-    #column_types=column_types,
+    column_types=column_types,
     initial_discretizer='equal_sample'
 )
+print('time')
 
-order = structure.k2_order_entropies(d.get_discretized_data())
-#order = [1, 0, 2, 4, 3]
-print(order)
-d.fit_k2(order=order)
+
+d.learn_structure()
+#order = structure.k2_order_entropies(d.get_discretized_data())
+#print(order)
+#d.fit_k2(order=[3, 4, 6, 1, 7, 2, 8, 12, 13, 9, 0, 5, 10, 11])
 #d.fit(10)
 
 end_time = time()
@@ -71,7 +60,6 @@ for disc in d.discretization:
     if disc is not None: print(', '.join(map(lambda d: '{:.2f}'.format(d), disc)))
 d.draw_structure_to_file('out.png')
 print('Time {:.3f}'.format(end_time-begin_time))
-#%%
 
 # %%
 from datetime import date, datetime
@@ -212,5 +200,4 @@ ax.set_ylabel('Zóna')
 ax.set_xticklabels(['9.89', '19.78', '29.66', '39.55', '49.43', '59.32','69.21', '79.09'])
 ax.set_yticklabels(['11.11', '22.22', '33.33', '44.44', '55.56', '66.67', '77.78', '88.89'])
 plt.savefig('housing_0_1_width')
-
 # %%
