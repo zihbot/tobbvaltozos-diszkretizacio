@@ -22,7 +22,7 @@ def discretize(data: pd.DataFrame, policy: Iterable[Iterable]) -> pd.DataFrame:
             continue
         data['tmp'] = 0
         for cnt, threshold in enumerate(policy[i]):
-            data.loc[data.iloc[:,i] >= threshold, 'tmp'] = cnt + 1
+            data.loc[data.iloc[:,i] > threshold, 'tmp'] = cnt + 1
         # If no policy, everything is the same
         if len(policy[i]) == 0:
             data['tmp'] = 0
