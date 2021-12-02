@@ -71,6 +71,8 @@ def learn_k2_structure(df: pd.DataFrame, order: list[int] = None, upper_bound: i
 
     p = [[] for i in range(n)] if p_step is None or len(p_step) == 0 else p_step
     for i in range(n):
+        if p_step is not None and i < len(p_step)-1 and sum([len(p_later) for p_later in p_step[i+1:]]) != 0:
+            continue
         P_old = util.preference_bias(df, order[i], p[i])
         ok_to_proceed = True
         while ok_to_proceed and len(p[i]) < upper_bound+1:
