@@ -1,6 +1,6 @@
 from abc import ABC
 from typing import Hashable, Iterable, Union
-from matplotlib.pyplot import draw
+from matplotlib.pyplot import axes, draw
 import numpy as np
 from numpy.lib import math
 import pandas as pd
@@ -117,22 +117,26 @@ def preference_bias_full(df: pd.DataFrame, columns: list[int], graph: nx.DiGraph
     return value
 
 def entropy(X: np.ndarray):
-    _, counts = np.unique(X, return_counts=True)
+    _, counts = np.unique(X, return_counts=True, axis=(1 if len(X.shape) > 1 else 0))
     pX = counts / counts.sum()
     return -(pX * np.log(pX)).sum()
 
 def relative_entropy(B: np.ndarray, A: np.ndarray):
     '''Calculates the relative entropy H (B | A)'''
+    '''
     _, ABIndex, ABcounts = np.unique(np.vstack((A, B)), axis=1, return_index=True, return_counts=True)
     pAB = ABcounts / ABcounts.sum()
     Aunique, Acounts = np.unique(A, return_counts=True)
     AcountDict = dict(zip(Aunique, Acounts))
 
     pAforall = np.empty_like(ABcounts)
+    print(AcountDict, A)
     for i, orig in enumerate(ABIndex): pAforall[i] = AcountDict[A[orig]]
     pAforall = pAforall / ABcounts.sum()
 
     return -sum(pAB * np.log(pAB / pAforall))
+    '''
+    return entropy(np.vstack((A, B))) - entropy(A)
 
 def mutual_information(A: np.ndarray, B: np.ndarray):
     return entropy(A) - relative_entropy(A, B)
