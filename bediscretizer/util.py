@@ -121,8 +121,8 @@ def entropy(X: np.ndarray):
     pX = counts / counts.sum()
     return -(pX * np.log(pX)).sum()
 
-def relative_entropy(A: np.ndarray, B: np.ndarray):
-    '''Calculates the relative entropy H (A | B)'''
+def relative_entropy(B: np.ndarray, A: np.ndarray):
+    '''Calculates the relative entropy H (B | A)'''
     _, ABIndex, ABcounts = np.unique(np.vstack((A, B)), axis=1, return_index=True, return_counts=True)
     pAB = ABcounts / ABcounts.sum()
     Aunique, Acounts = np.unique(A, return_counts=True)
