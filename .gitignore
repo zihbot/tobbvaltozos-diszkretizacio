@@ -1,7 +1,6 @@
 __pycache__
 *.log
 *.png
-test/*
 documentation/*
 covid/*.csv
 szivroham.csv
